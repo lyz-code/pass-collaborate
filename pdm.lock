@@ -253,6 +253,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dnspython"
+version = "2.2.1"
+requires_python = ">=3.6,<4.0"
+summary = "DNS toolkit"
+
+[[package]]
 name = "docutils"
 version = "0.19"
 requires_python = ">=3.7"
@@ -266,6 +272,16 @@ summary = "A parser for Python dependency files"
 dependencies = [
     "packaging",
     "toml",
+]
+
+[[package]]
+name = "email-validator"
+version = "1.3.0"
+requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
+summary = "A robust email address syntax and deliverability validation library."
+dependencies = [
+    "dnspython>=1.15.0",
+    "idna>=2.0.0",
 ]
 
 [[package]]
@@ -882,6 +898,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "passpy"
+version = "1.0.2"
+requires_python = ">=3.3"
+summary = "ZX2C4's pass compatible Python library and cli"
+dependencies = [
+    "GitPython>=1.0.1",
+    "click>=2.0",
+    "pyperclip>=1.5",
+    "python-gnupg>=0.3.8",
+]
+
+[[package]]
 name = "pathspec"
 version = "0.10.2"
 requires_python = ">=3.7"
@@ -980,6 +1008,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pydantic"
+version = "1.10.2"
+extras = ["email"]
+requires_python = ">=3.7"
+summary = "Data validation and settings management using python type hints"
+dependencies = [
+    "email-validator>=1.0.3",
+    "pydantic==1.10.2",
+]
+
+[[package]]
 name = "pydocstyle"
 version = "6.1.1"
 requires_python = ">=3.6"
@@ -1027,6 +1066,11 @@ name = "pyparsing"
 version = "3.0.9"
 requires_python = ">=3.6.8"
 summary = "pyparsing module - Classes and methods to define and execute parsing grammars"
+
+[[package]]
+name = "pyperclip"
+version = "1.8.2"
+summary = "A cross-platform clipboard module for Python. (Only handles plain text for now.)"
 
 [[package]]
 name = "pyprojroot"
@@ -1086,6 +1130,11 @@ summary = "Extensions to the standard Python datetime module"
 dependencies = [
     "six>=1.5",
 ]
+
+[[package]]
+name = "python-gnupg"
+version = "0.5.0"
+summary = "A wrapper for the Gnu Privacy Guard (GPG or GnuPG)"
 
 [[package]]
 name = "pytz"
@@ -1309,6 +1358,15 @@ version = "1.4.3"
 summary = "a fork of Python 2 and 3 ast modules with type comment support"
 
 [[package]]
+name = "typer"
+version = "0.7.0"
+requires_python = ">=3.6"
+summary = "Typer, build great CLIs. Easy to code. Based on Python type hints."
+dependencies = [
+    "click<9.0.0,>=7.1.1",
+]
+
+[[package]]
 name = "types-click"
 version = "7.1.8"
 summary = "Typing stubs for click"
@@ -1393,7 +1451,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "4.0"
-content_hash = "sha256:fdf2bcea5f2352f4cecc832c76d54237201e3edc5d95895c91ba3a227a7d7609"
+content_hash = "sha256:b3f31d78bee02d3d59d2710802422c54f730d3806a3d89204cc8747f58c2c231"
 
 [metadata.files]
 "argcomplete 2.0.0" = [
@@ -1664,6 +1722,10 @@ content_hash = "sha256:fdf2bcea5f2352f4cecc832c76d54237201e3edc5d95895c91ba3a227
 "dlint 0.13.0" = [
     {url = "https://files.pythonhosted.org/packages/0c/9d/c60d6578bf0ba981957837a97a16bd14c4ac020e6e5935f5e6f4d9af267e/dlint-0.13.0-py3-none-any.whl", hash = "sha256:72094f35711a338eed4b8f95cbbaade5ec1d784bec516933bdbc2863676c4298"},
 ]
+"dnspython 2.2.1" = [
+    {url = "https://files.pythonhosted.org/packages/99/fb/e7cd35bba24295ad41abfdff30f6b4c271fd6ac70d20132fa503c3e768e0/dnspython-2.2.1.tar.gz", hash = "sha256:0f7569a4a6ff151958b64304071d370daa3243d15941a7beedf0c9fe5105603e"},
+    {url = "https://files.pythonhosted.org/packages/9b/ed/28fb14146c7033ba0e89decd92a4fa16b0b69b84471e2deab3cc4337cc35/dnspython-2.2.1-py3-none-any.whl", hash = "sha256:a851e51367fb93e9e1361732c1d60dab63eff98712e503ea7d92e6eccb109b4f"},
+]
 "docutils 0.19" = [
     {url = "https://files.pythonhosted.org/packages/6b/5c/330ea8d383eb2ce973df34d1239b3b21e91cd8c865d21ff82902d952f91f/docutils-0.19.tar.gz", hash = "sha256:33995a6753c30b7f577febfc2c50411fec6aac7f7ffeb7c4cfe5991072dcf9e6"},
     {url = "https://files.pythonhosted.org/packages/93/69/e391bd51bc08ed9141ecd899a0ddb61ab6465309f1eb470905c0c8868081/docutils-0.19-py3-none-any.whl", hash = "sha256:5e1de4d849fee02c63b040a4a3fd567f4ab104defd8a5511fbbc24a8a017efbc"},
@@ -1671,6 +1733,10 @@ content_hash = "sha256:fdf2bcea5f2352f4cecc832c76d54237201e3edc5d95895c91ba3a227
 "dparse 0.6.2" = [
     {url = "https://files.pythonhosted.org/packages/43/62/559227d7f72319055f6970a87677fb8cb24390e61f6dc33ba416f625b15a/dparse-0.6.2.tar.gz", hash = "sha256:d45255bda21f998bc7ddf2afd5e62505ba6134756ba2d42a84c56b0826614dfe"},
     {url = "https://files.pythonhosted.org/packages/7e/e3/9e761c7ed18147ea411a74209068cc57a631a7c5d51709941af9b9e52e3e/dparse-0.6.2-py3-none-any.whl", hash = "sha256:8097076f1dd26c377f30d4745e6ec18fef42f3bf493933b842ac5bafad8c345f"},
+]
+"email-validator 1.3.0" = [
+    {url = "https://files.pythonhosted.org/packages/74/44/8c131647fe3c9afdca92abc4a7fe981df55710f142df3aae0ab658258316/email_validator-1.3.0.tar.gz", hash = "sha256:553a66f8be2ec2dea641ae1d3f29017ab89e9d603d4a25cdaac39eefa283d769"},
+    {url = "https://files.pythonhosted.org/packages/e7/d3/88997ca4903c70fb6eec2e29501a35f84aaf34790f207febdf188e374377/email_validator-1.3.0-py2.py3-none-any.whl", hash = "sha256:816073f2a7cffef786b29928f58ec16cdac42710a53bb18aa94317e3e145ec5c"},
 ]
 "entrypoints 0.4" = [
     {url = "https://files.pythonhosted.org/packages/35/a8/365059bbcd4572cbc41de17fd5b682be5868b218c3c5479071865cab9078/entrypoints-0.4-py3-none-any.whl", hash = "sha256:f174b5ff827504fd3cd97cc3f8649f3693f51538c7e4bdf3ef002c8429d42f9f"},
@@ -2020,6 +2086,10 @@ content_hash = "sha256:fdf2bcea5f2352f4cecc832c76d54237201e3edc5d95895c91ba3a227
     {url = "https://files.pythonhosted.org/packages/05/8e/8de486cbd03baba4deef4142bd643a3e7bbe954a784dc1bb17142572d127/packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
     {url = "https://files.pythonhosted.org/packages/df/9e/d1a7217f69310c1db8fdf8ab396229f55a699ce34a203691794c5d1cad0c/packaging-21.3.tar.gz", hash = "sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb"},
 ]
+"passpy 1.0.2" = [
+    {url = "https://files.pythonhosted.org/packages/18/20/4bdcf4acde70dd29d7bb1959664632c2cb8e57fe9a79b507e2da77c984be/passpy-1.0.2-py3-none-any.whl", hash = "sha256:c28958cb50c8a9a4bc28a7be2ed1819ce1d4e22f77f5dfdde1a1b28882d8c956"},
+    {url = "https://files.pythonhosted.org/packages/aa/fa/2a4c61c4984f04a2356847439a6a653bac91171c4789b2a639f8808cdf2b/passpy-1.0.2.tar.gz", hash = "sha256:fe758c2022213034be2dbf0fab4a1e41fd0f9aeb0582da2f936cd105162027a9"},
+]
 "pathspec 0.10.2" = [
     {url = "https://files.pythonhosted.org/packages/42/79/94b21d5fabb97749ca94590315abe150a750483c87add8543781bcb6cd26/pathspec-0.10.2-py3-none-any.whl", hash = "sha256:88c2606f2c1e818b978540f73ecc908e13999c6c3a383daf3705652ae79807a5"},
     {url = "https://files.pythonhosted.org/packages/a2/29/959c72e1a6c3c25eaa46b9bfcc7fd401f65af83163d4796af09272c83c8a/pathspec-0.10.2.tar.gz", hash = "sha256:8f6bf73e5758fd365ef5d58ce09ac7c27d2833a8d7da51712eac6e27e35141b0"},
@@ -2126,6 +2196,9 @@ content_hash = "sha256:fdf2bcea5f2352f4cecc832c76d54237201e3edc5d95895c91ba3a227
     {url = "https://files.pythonhosted.org/packages/6c/10/a7d0fa5baea8fe7b50f448ab742f26f52b80bfca85ac2be9d35cdd9a3246/pyparsing-3.0.9-py3-none-any.whl", hash = "sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc"},
     {url = "https://files.pythonhosted.org/packages/71/22/207523d16464c40a0310d2d4d8926daffa00ac1f5b1576170a32db749636/pyparsing-3.0.9.tar.gz", hash = "sha256:2b020ecf7d21b687f219b71ecad3631f644a47f01403fa1d1036b0c6416d70fb"},
 ]
+"pyperclip 1.8.2" = [
+    {url = "https://files.pythonhosted.org/packages/a7/2c/4c64579f847bd5d539803c8b909e54ba087a79d01bb3aba433a95879a6c5/pyperclip-1.8.2.tar.gz", hash = "sha256:105254a8b04934f0bc84e9c24eb360a591aaf6535c9def5f29d92af107a9bf57"},
+]
 "pyprojroot 0.2.0" = [
     {url = "https://files.pythonhosted.org/packages/46/61/9ea2c7197c67a554f0222677ab6f43985babb05555e4bef85fa77275020c/pyprojroot-0.2.0.tar.gz", hash = "sha256:a79900dc52ee097bfd8d917a3d45e2b98494c47a57ba3a71bf609d7a156732e8"},
     {url = "https://files.pythonhosted.org/packages/5a/f5/dfbe49718595ff62be70e001b85e58a125928e93bf60f8bb6b7b94280e39/pyprojroot-0.2.0-py3-none-any.whl", hash = "sha256:741e8b4878a0d6bb6b06ec09aa05797130289e2127aa595b8f1cbadce697909f"},
@@ -2149,6 +2222,10 @@ content_hash = "sha256:fdf2bcea5f2352f4cecc832c76d54237201e3edc5d95895c91ba3a227
 "python-dateutil 2.8.2" = [
     {url = "https://files.pythonhosted.org/packages/36/7a/87837f39d0296e723bb9b62bbb257d0355c7f6128853c78955f57342a56d/python_dateutil-2.8.2-py2.py3-none-any.whl", hash = "sha256:961d03dc3453ebbc59dbdea9e4e11c5651520a876d0f4db161e8674aae935da9"},
     {url = "https://files.pythonhosted.org/packages/4c/c4/13b4776ea2d76c115c1d1b84579f3764ee6d57204f6be27119f13a61d0a9/python-dateutil-2.8.2.tar.gz", hash = "sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86"},
+]
+"python-gnupg 0.5.0" = [
+    {url = "https://files.pythonhosted.org/packages/83/e8/44c05b10888c907e8e327f17f257655a25a3ebe44772b77ef87b5fb336c2/python_gnupg-0.5.0-py2.py3-none-any.whl", hash = "sha256:345723a03e67b82aba0ea8ae2328b2e4a3906fbe2c18c4082285c3b01068f270"},
+    {url = "https://files.pythonhosted.org/packages/e3/5c/5ff9877001616912a74f4377cd5f80925b31a678087800beae5b28bdb80e/python-gnupg-0.5.0.tar.gz", hash = "sha256:70758e387fc0e0c4badbcb394f61acbe68b34970a8fed7e0f7c89469fe17912a"},
 ]
 "pytz 2022.6" = [
     {url = "https://files.pythonhosted.org/packages/76/63/1be349ff0a44e4795d9712cc0b2d806f5e063d4d34631b71b832fac715a8/pytz-2022.6.tar.gz", hash = "sha256:e89512406b793ca39f5971bc999cc538ce125c0e51c27941bef4568b460095e2"},
@@ -2357,6 +2434,10 @@ content_hash = "sha256:fdf2bcea5f2352f4cecc832c76d54237201e3edc5d95895c91ba3a227
     {url = "https://files.pythonhosted.org/packages/e5/d4/12cea19d4b5b7ef124016afd4671ed10418d918bc1ff83a964036261025c/typed_ast-1.4.3-cp39-cp39-win_amd64.whl", hash = "sha256:9c6d1a54552b5330bc657b7ef0eae25d00ba7ffe85d9ea8ae6540d2197a3788c"},
     {url = "https://files.pythonhosted.org/packages/e7/2e/c0310582bdf7aae906f866be273d1dbc90c5a8ff2e81e1b6c55af9831b1d/typed_ast-1.4.3-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:52b1eb8c83f178ab787f3a4283f68258525f8d70f778a2f6dd54d3b5e5fb4341"},
     {url = "https://files.pythonhosted.org/packages/f0/c7/4d9083f76c62fa9569a4efe7f89283ae56fd157f10c1961aeb06e8ab8064/typed_ast-1.4.3-cp36-cp36m-manylinux2014_aarch64.whl", hash = "sha256:c190f0899e9f9f8b6b7863debfb739abcb21a5c054f911ca3596d12b8a4c4c7f"},
+]
+"typer 0.7.0" = [
+    {url = "https://files.pythonhosted.org/packages/0d/44/56c3f48d2bb83d76f5c970aef8e2c3ebd6a832f09e3621c5395371fe6999/typer-0.7.0-py3-none-any.whl", hash = "sha256:b5e704f4e48ec263de1c0b3a2387cd405a13767d2f907f44c1a08cbad96f606d"},
+    {url = "https://files.pythonhosted.org/packages/e1/45/bcbc581f87c8d8f2a56b513eb994d07ea4546322818d95dc6a3caf2c928b/typer-0.7.0.tar.gz", hash = "sha256:ff797846578a9f2a201b53442aedeb543319466870fbe1c701eab66dd7681165"},
 ]
 "types-click 7.1.8" = [
     {url = "https://files.pythonhosted.org/packages/00/ff/0e6a56108d45c80c61cdd4743312d0304d8192482aea4cce96c554aaa90d/types-click-7.1.8.tar.gz", hash = "sha256:b6604968be6401dc516311ca50708a0a28baa7a0cb840efd7412f0dbbff4e092"},

@@ -1,44 +1,39 @@
 """Command line interface definition."""
 
-import click
+from pathlib import Path
+from typing import Optional
 
-from .. import version
-from . import load_logger
+import typer
+
+from .. import version, views
+from . import group, user
+from .dependencies import configure_dependencies
+
+app = typer.Typer()
+app.add_typer(group.app, name="group")
+app.add_typer(user.app, name="user")
 
 
-from click.core import Context
-from . import load_config
+def version_callback(value: bool) -> None:
+    """Print the version of the program."""
+    if value:
+        print(version.version_info())
+        raise typer.Exit()
 
 
-
-
-@click.group()
-@click.version_option(version="", message=version.version_info())
-@click.option("-v", "--verbose", is_flag=True)
-
-@click.option(
-    "-c",
-    "--config_path",
-    default="~/.local/share/pass_collaborate/config.yaml",
-    help="configuration file path",
-    envvar="PASS_COLLABORATE_CONFIG_PATH",
-)
-@click.pass_context
-def cli(ctx: Context, config_path: str, verbose: bool) -> None:
-    """Command line interface main click entrypoint."""
+@app.callback()
+def main(
+    ctx: typer.Context,
+    version: Optional[bool] = typer.Option(
+        None, "--version", callback=version_callback, is_eager=True
+    ),
+    pass_dir: Path = typer.Option("~/.password-store", envvar="PASSWORD_STORE_DIR"),
+    key_dir: Path = typer.Option("~/.gnupg", envvar="GNUPGHOME"),
+) -> None:
+    """A pass extension that helps collectives manage the access to their passwords."""
     ctx.ensure_object(dict)
+    ctx.obj["deps"] = configure_dependencies(pass_dir=pass_dir, key_dir=key_dir)
 
-    ctx.obj["config"] = load_config(config_path)
-    load_logger(verbose)
 
-@cli.command(hidden=True)
-def null() -> None:
-    """Do nothing.
-
-    Used for the tests until we have a better solution.
-    """
-
-if __name__ == "__main__":  # pragma: no cover
-    # E1120: As the arguments are passed through the function decorators instead of
-    # during the function call, pylint get's confused.
-    cli(ctx={})  # noqa: E1120
+if __name__ == "__main__":
+    app()

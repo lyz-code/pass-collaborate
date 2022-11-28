@@ -7,19 +7,7 @@ Functions:
 import logging
 import sys
 
-import os
-from ..config import Config
-
 log = logging.getLogger(__name__)
-
-def load_config(config_path: str) -> Config:
-    """Load the configuration from the file."""
-    log.debug(f"Loading the configuration from file {config_path}")
-    config = Config()
-    config.load(os.path.expanduser(config_path))
-
-    return config
-
 
 
 # I have no idea how to test this function :(. If you do, please send a PR.
