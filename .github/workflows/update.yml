@@ -1,0 +1,32 @@
+---
+name: Update
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: 11 08 * * *
+  workflow_dispatch:
+
+jobs:
+  Update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.9
+      - name: Install program
+        run: |
+          # All these steps are required so that mypy behaves equally than the
+          # local environment, once mypy supports __pypackages__ try to use the
+          # github action
+          pip install virtualenv pdm
+          virtualenv .venv
+          source .venv/bin/activate
+          pdm config python.use_venv True
+      - name: Update requirements
+        run: make update-production
+      - name: Run tests
+        run: make all

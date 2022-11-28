@@ -1,0 +1,25 @@
+{
+  "template": "https://github.com/lyz-code/cookiecutter-python-project",
+  "commit": "68a4cf28a19c6518974b71ecd61b8313c291bd2f",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "project_name": "pass-collaborate",
+      "project_slug": "pass-collaborate",
+      "project_description": "A pass extension that helps collectives manage the access to their passwords",
+      "requirements": "typer",
+      "configure_command_line": "True",
+      "read_configuration_from_yaml": "True",
+      "github_user": "lyz-code",
+      "github_token_pass_path": "internet/github.lyz-code.api_token",
+      "pypi_token_pass_path": "internet/pypi.token",
+      "test_pypi_token_pass_path": "internet/test.pypi.token",
+      "author": "Lyz",
+      "author_email": "lyz-code-security-advisories@riseup.net",
+      "security_advisories_email": "lyz-code-security-advisories@riseup.net",
+      "project_underscore_slug": "pass_collaborate",
+      "_template": "https://github.com/lyz-code/cookiecutter-python-project"
+    }
+  },
+  "directory": null
+}

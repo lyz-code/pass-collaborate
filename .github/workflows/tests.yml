@@ -1,0 +1,74 @@
+---
+name: Tests
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+jobs:
+  Tests:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.7, 3.8, 3.9, '3.10']
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install program
+        run: |
+          # All these steps are required so that mypy behaves equally than the
+          # local environment, once mypy supports __pypackages__ try to use the
+          # github action
+          pip install virtualenv pdm
+          virtualenv .venv
+          source .venv/bin/activate
+          pdm config python.use_venv True
+          make install
+        # 3.7 is giving me some issues with flake8 and importlib-metadata, until
+        # https://github.com/flakeheaven/flakeheaven/issues/132 is done, I won't spend
+        # time testing in this environment.
+        # https://github.com/lyz-code/mkdocs-newsletter/actions/runs/3548202587/jobs/5959150030
+      - name: Test linters
+        run: if [[ ${{ matrix.python-version }} != '3.7' ]];then make lint; fi
+      - name: Test type checkers
+        run: make mypy
+        # 3.7 is giving me some issues with flake8 and importlib-metadata, until
+        # https://github.com/flakeheaven/flakeheaven/issues/132 is done, I won't spend
+        # time testing in this environment.
+        # https://github.com/lyz-code/mkdocs-newsletter/actions/runs/3548202587/jobs/5959150030
+      - name: Test security
+        run: if [[ ${{ matrix.python-version }} != '3.7' ]];then make security; fi
+      - name: Test with pytest
+        run: make test
+      - name: Upload Coverage
+        run: |
+          pip3 install 'coveralls[toml]'
+          coveralls --service=github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERALLS_FLAG_NAME: ${{ matrix.test-name }}
+          COVERALLS_PARALLEL: true
+      - name: Test documentation
+        run: make build-docs
+      - name: Build the package
+        run: make build-package
+  Coveralls:
+    name: Finish Coveralls
+    needs: Tests
+    runs-on: ubuntu-latest
+    container: python:3-slim
+    steps:
+      - name: Finished
+        run: |
+          pip3 install 'coveralls[toml]'
+          coveralls --service=github --finish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,49 @@
+---
+name: Build
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  PyPI:
+    name: Build and publish Python distributions to TestPyPI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: pdm-project/setup-pdm@main
+        name: Setup Python and PDM
+        with:
+          python-version: 3.9
+      - name: Build package
+        run: make build-package
+      - name: Publish distribution to Test PyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.test_pypi_password }}
+          repository_url: https://test.pypi.org/legacy/
+          skip_existing: true
+  Documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          # Number of commits to fetch. 0 indicates all history.
+          # Default: 1
+          fetch-depth: 0
+      - uses: pdm-project/setup-pdm@main
+        name: Setup Python and PDM
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: make install
+      - name: Build the Documentation
+        run: make build-docs
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          publish_dir: ./site

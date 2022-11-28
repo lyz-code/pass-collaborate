@@ -1,0 +1,84 @@
+---
+site_name: pass-collaborate
+site_author: Lyz
+site_url: https://lyz-code.github.io/pass-collaborate
+nav:
+  - pass-collaborate: index.md
+  - Reference: reference.md
+  - Contributing: contributing.md
+  - Architecture Decision Records:
+      - adr/adr.md
+      - '001: High level problem analysis': |
+          adr/001-high_level_problem_analysis.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          rendering:
+            show_root_heading: true
+            heading_level: 1
+      watch:
+        - src
+  - autolinks
+  - git-revision-date-localized:
+      type: timeago
+      fallback_to_build_date: true
+  - minify:
+      minify_html: true
+  - section-index
+
+markdown_extensions:
+  - abbr
+  - def_list
+  - admonition
+  # We need the markdown-include to inject files into other files
+  - markdown_include.include:
+      base_path: docs
+  - meta
+  - toc:
+      permalink: true
+      baselevel: 2
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: '!!python/name:pymdownx.emoji.to_svg'
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+theme:
+  name: material
+  custom_dir: docs/theme
+  # logo: 'images/logo.bmp'
+  features:
+    - navigation.instant
+    - navigation.top
+    - content.code.annotate
+
+  palette:
+    primary: blue grey
+    accent: light blue
+
+extra_css:
+  - stylesheets/extra.css
+  - stylesheets/links.css
+
+repo_name: lyz-code/pass-collaborate
+repo_url: https://github.com/lyz-code/pass-collaborate
