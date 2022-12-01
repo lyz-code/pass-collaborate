@@ -128,18 +128,18 @@ def test_group_authorize(
     """
     auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     auth.add_group(name="developers", users=["developer@example.org"])
-    # Check that the permissions are reight
+    # Check that the permissions are right
     for element in ["web", "database", "bastion"]:
-        assert has_access(auth, pass_, element)
-        assert not has_access(auth, pass_dev, element)
+        assert has_access(pass_, element)
+        assert not has_access(pass_dev, element)
 
     result = runner.invoke(app, ["group", "authorize", entity, "web"])
 
     assert result.exit_code == 0
     auth.reload()
-    assert has_access(auth, pass_dev, "web")
+    assert has_access(pass_dev, "web")
     # Check that the permissions of the rest of the store have not changed.
-    assert has_access(auth, pass_, "web")
+    assert has_access(pass_, "web")
     for element in ["database", "bastion"]:
-        assert has_access(auth, pass_, element)
-        assert not has_access(auth, pass_dev, element)
+        assert has_access(pass_, element)
+        assert not has_access(pass_dev, element)

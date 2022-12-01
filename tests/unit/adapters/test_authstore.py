@@ -4,13 +4,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pass_collaborate.exceptions import NotFoundError
+from pass_collaborate.exceptions import NotFoundError, TooManyError
 from pass_collaborate.model import Group
 
 from ...factories import UserFactory
 
 if TYPE_CHECKING:
     from pass_collaborate.adapters import AuthStore
+    from pass_collaborate.model import User
 
 
 def test_raises_exception_if_group_exists(auth: "AuthStore") -> None:
@@ -59,25 +60,48 @@ def test_raises_exception_if_user_exists(auth: "AuthStore") -> None:
         auth.add_user(user.name, user.key, user.email)
 
 
-@pytest.mark.parametrize("identifier", [])
-def test_get_user_happy_path() -> None:
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        "Marie",
+        "developer@example.org",
+        "8DFE8782CD025ED6220D305115575911602DDD94",
+    ],
+)
+def test_get_user_happy_path(
+    auth: "AuthStore", developer: "User", identifier: str
+) -> None:
     """
-    Given:
+    Given: A valid user
     When: getting by the email, key or name
     Then: the user is returned
     """
-    result = False
+    auth.add_user(developer.name, developer.key, developer.email)
 
-    assert result
+    result = auth.get_user(identifier)
+
+    assert result == developer
 
 
-@pytest.mark.skip("Not yet}")
-def test_get_user_raises_exception_if_more_than_one() -> None:
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        "developer@example.org",
+        "8DFE8782CD025ED6220D305115575911602DDD94",
+    ],
+)
+def test_get_user_raises_exception_if_more_than_one(
+    auth: "AuthStore", developer: "User", identifier: str
+) -> None:
     """
-    Given:
-    When:
-    Then:
+    Given: A valid user introduced twice
+    When: getting by the email, key or name.
+    Then: As more than one user matches, raise an exception.
     """
-    result = False
+    auth.add_user(developer.name, developer.key, developer.email)
+    auth.add_user("Other name", developer.key, developer.email)
 
-    assert result
+    with pytest.raises(
+        TooManyError, match="More than one user matched the selected criteria"
+    ):
+        auth.get_user(identifier)

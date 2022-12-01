@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import EmailStr
 
-from pass_collaborate.adapters import AuthStore, PassStore
+from pass_collaborate.adapters import AuthStore, KeyStore, PassStore
 from pass_collaborate.entrypoints.dependencies import configure_password_store
 from pass_collaborate.model import User
 
@@ -17,6 +17,14 @@ def work_dir_(tmp_path: Path) -> Path:
     shutil.copytree("tests/assets/pass", tmp_path / ".password-store")
     shutil.copytree("tests/assets/gpg", tmp_path / "gpg")
     return tmp_path
+
+
+@pytest.fixture(name="key")
+def key_(work_dir: Path) -> KeyStore:
+    """Create a KeyStore on the working dir."""
+    gpg_dir = work_dir / "gpg" / "admin"
+    key = KeyStore(key_dir=gpg_dir)
+    return key
 
 
 @pytest.fixture(name="auth")

@@ -4,13 +4,20 @@ Classes and functions that connect the different domain model objects with the a
 and handlers to achieve the program's purpose.
 """
 
+import logging
+from typing import TYPE_CHECKING
 
-def has_access(auth: "AuthStore", pass_: "PassStore", element: str) -> bool:
+if TYPE_CHECKING:
+    from .adapters import AuthStore, PassStore
+
+log = logging.getLogger(__name__)
+
+
+def has_access(pass_: "PassStore", pass_path: str) -> bool:
     """Return if the user of the password store has access to an element of the store.
 
     Args:
-        auth: Adapter of the authorisation store
-        pass: Adapter of the password store of the user to test
-        element: identifier of a password store element.
+        pass_: Adapter of the password store of the user to test
+        pass_path: identifier of a password store element.
     """
-    ...
+    return pass_.has_access(pass_path)
