@@ -1,6 +1,6 @@
 """Define the data models of the program."""
 
-from typing import Annotated, List, Optional
+from typing import Annotated, List
 
 from pydantic import BaseModel, EmailStr, Field  # noqa: E0611
 
@@ -13,7 +13,7 @@ class Group(BaseModel):
     """Model a group of users."""
 
     name: Name
-    users: Optional[List[Username]] = None
+    users: List[Username] = Field(default_factory=list)
 
 
 class User(BaseModel):

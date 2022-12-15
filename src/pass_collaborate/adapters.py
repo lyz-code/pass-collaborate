@@ -2,6 +2,7 @@
 
 import logging
 import os
+from contextlib import suppress
 from pathlib import Path
 from typing import Generator, List, Optional
 
@@ -11,8 +12,8 @@ from pydantic import BaseModel  # noqa: E0611
 from pydantic import EmailStr
 from ruamel.yaml import YAML
 
-from .exceptions import NotFoundError, TooManyError
-from .model import Group, User
+from .exceptions import DecryptionError, NotFoundError, TooManyError
+from .model import GPGKey, Group, User
 
 log = logging.getLogger(__name__)
 
@@ -40,29 +41,33 @@ class KeyStore:
 
         Args:
             path: Path to the file to decrypt.
+
+        Raises:
+            NotFoundError: if file doesn't exist
+            DecryptError: can't decrypt file
         """
-        result = self.gpg.decrypt(str(path))
-
-        # E1101: Instance of 'Crypt' has no 'stderr' member. But it does
-        if "no valid OpenPGP data found" in result.stderr:  # noqa: E1101
+        try:
+            result = self.gpg.decrypt_file(str(path))
+        except ValueError as error:
             raise NotFoundError(
-                f"No valid data found in {path}.",
-            )
+                f"Could not find the file to decrypt in {path}"
+            ) from error
 
-        return result
+        if result.returncode != 0:
+            # E1101: Instance of 'Crypt' has no 'stderr' member. But it does
+            raise DecryptionError(result.stderr)  # noqa: E1101
+
+        return str(result)
 
     def can_decrypt(self, path: Path) -> bool:
         """Test if the user can decrypt a file.
 
         Args:
             path: Path to the file to decrypt.
-
-        Raises:
-            FileNotFoundError: if file doesn't exist
         """
         try:
             self.decrypt(path)
-        except NotFoundError:
+        except (NotFoundError, DecryptionError):
             return False
         return True
 
@@ -80,34 +85,22 @@ class PassStore(BaseModel):
     """
 
     store_dir: Path
-    key: KeyStore
 
     class Config:
         """Configure the pydantic model."""
 
         arbitrary_types_allowed = True
 
-    def has_access(self, pass_path: str) -> bool:
-        """Test if the user has access to the pass path.
-
-        * For files it tries to decrypt it.
-        * For directories it checks if our key is in the allowed keys of the .gpgid
-            file.
-
-        Args:
-            pass_path: internal path of the password store. Not a real Path
-        """
-        path = self.path(pass_path)
-        if path.is_dir():
-            return self.key_id in self.allowed_keys(pass_path)
-
-        return self.key.can_decrypt(path)
-
-    def path(self, pass_path: Optional[str] = None) -> Path:
+    def path(
+        self, pass_path: Optional[str] = None, is_dir: Optional[bool] = None
+    ) -> Path:
         """Return the path to the file or directory of the password internal path.
 
         Args:
             pass_path: internal path of the password store. Not a real Path
+
+        Raises:
+            ValueError: if is_dir is true and the result path is not a directory.
 
         Example:
         >>> self.path('web')
@@ -115,54 +108,113 @@ class PassStore(BaseModel):
 
         >>> self.path()
         Path('~/.password-store')
+
+        >>> self.path('bastion')
+        Path('~/.password-store/bastion.gpg')
         """
         if pass_path is None:
             return self.store_dir
-        return Path(self.store_dir / pass_path)
 
-    @property
-    def key_id(self) -> str:
-        """Return the gpg key id used by the password store user.
+        path = Path(self.store_dir / pass_path)
 
-        Compare the private keys stored in the keys store with the keys used in the
-        password storage.
-        """
-        keystore_keys = self.key.private_key_fingerprints
-        matching_keys = list(set(keystore_keys) & set(self.allowed_keys()))
+        if is_dir and not path.is_dir():
+            raise ValueError(f"{path} is not a directory when it was expected to be")
 
-        if len(matching_keys) == 1:
-            return matching_keys[0]
-        raise ValueError(
-            "There were more or less than 1 available gpg keys that is used "
-            f"in the repository. Matching keys are: {matching_keys}"
-        )
+        if not path.exists() and path.suffix == "":
+            path = path.with_name(f"{path.name}.gpg")
+            if not path.exists():
+                raise NotFoundError(
+                    f"Could not find the element {pass_path} in the password store"
+                )
 
-    def gpg_id_files(
-        self, pass_path: Optional[str] = None
-    ) -> Generator[Path, None, None]:
-        """Return the .gpg-id files of a pass path and it's children.
+        return path
+
+    def _gpg_id_file(self, path: Path) -> Path:
+        """Return the first .gpg-id file that applies to a pass path.
 
         Args:
-            pass_path: internal path of the password store. Not a real Path
+            path: A real path to an element of the pass store.
         """
-        return self.path(pass_path).rglob(".gpg-id")
+        gpg_id_path = path / ".gpg-id"
 
-    def allowed_keys(self, pass_path: Optional[str] = None) -> List[str]:
-        """Return the allowed gpg keys of the pass path.
+        if gpg_id_path.is_file():
+            return gpg_id_path
+
+        if path == self.store_dir:
+            raise NotFoundError("Couldn't find the root .gpg-id of your store")
+
+        return self._gpg_id_file(path.parent)
+
+    def allowed_keys(
+        self, path: Optional[Path] = None, new_keys: Optional[List[str]] = None
+    ) -> List[str]:
+        """Return the allowed gpg keys of the path.
 
         * For files it analyzes the gpg data.
         * For directories it traverses the paths to find the first .gpgid file,
             returning it's content.
 
         Args:
-            pass_path: internal path of the password store. Not a real Path
+            path: A real path to an element of the pass store.
+            new_keys: List of keys to add to the allowed_keys
         """
-        allowed_keys = []
+        path = path or self.store_dir
+        new_keys = new_keys or []
+        existent_keys = self._gpg_id_file(path).read_text().splitlines()
 
-        for gpg_id in self.gpg_id_files(pass_path):
-            allowed_keys.extend(gpg_id.read_text().splitlines())
+        return existent_keys + new_keys
 
-        return allowed_keys
+    def authorize(self, id_: str, pass_dir_path: str) -> None:
+        """Authorize a group or person to a directory of the password store.
+
+        Args:
+            id_: Unique identifier of a group or person. It can be the group name,
+                person name, email or gpg key.
+            pass_dir_path: internal path of a directory of the password store.
+                Not a real Path
+
+        Raises:
+            ValueError: When trying to authorize a file.
+                If we authorize a file with keys different than the ones specified on
+                the .gpg-id file, the next time someone reencrypts the file using `pass`
+                directly, the change will be overwritten. We could handle this case, but
+                not for the MVP.
+        """
+        if self.path(pass_dir_path).is_file():
+            raise ValueError(
+                "Authorizing access to a file is not yet supported, "
+                "please use the parent directory."
+            )
+
+        new_key = self.key.get_key(id_)
+
+        for path in self._pass_paths(pass_dir_path):
+            log.info(f"Authorizing {id_} to access password {self._pass_path(path)}")
+            self.key.encrypt(path, self._allowed_keys(path=path, new_keys=[new_key]))
+
+    def _pass_paths(self, pass_dir_path: str) -> Generator[Path, None, None]:
+        """Return all the password files of a pass directory.
+
+        Args:
+            pass_dir_path: internal path of a directory of the password store.
+                Not a real Path
+        """
+        return self.path(pass_dir_path, is_dir=True).rglob("*.gpg")
+
+    def _pass_path(self, path: Path) -> str:
+        """Return the pass representation of a real path.
+
+        It's the reverse of self.path
+
+        Args:
+            path: Path to a real directory or file.
+        """
+        pass_path = str(path).replace(f"{self.store_dir}", "").replace("/", "")
+
+        if path.is_file():
+            pass_path = pass_path.replace(".gpg", "")
+
+        return pass_path
 
 
 class AuthStore(GoodConf):  # type: ignore
@@ -208,6 +260,7 @@ class AuthStore(GoodConf):  # type: ignore
         Raises:
             ValueError: if the group already exists
         """
+        users = users or []
         if name in self.group_names:
             raise ValueError(f"The group {name} already exists.")
 
@@ -263,13 +316,35 @@ class AuthStore(GoodConf):  # type: ignore
             for user in self.users
             if identifier in (user.name, user.key, user.email)
         ]
+
         if len(user_match) == 0:
             raise NotFoundError(f"There is no user that matches {identifier}.")
-        return user_match[0]
-
+        if len(user_match) == 1:
+            return user_match[0]
         raise TooManyError(
             f"More than one user matched the selected criteria {identifier}."
         )
+
+    def get_keys(self, identifier: str) -> List[GPGKey]:
+        """Return the gpg keys that matches the identifier.
+
+        Args:
+            identifier: string that identifies a user or group. It can be either the
+                name, the email or the gpg key.
+        """
+        users = []
+
+        # Find in the users
+        with suppress(NotFoundError):
+            users.append(self.get_user(identifier))
+
+        # Find in the groups
+        with suppress(NotFoundError):
+            users.extend(
+                [self.get_user(user) for user in self.get_group(identifier).users]
+            )
+
+        return [user.key for user in users]
 
     def add_users_to_group(self, name: str, users: List[str]) -> None:
         """Add a list of users to an existent group."""

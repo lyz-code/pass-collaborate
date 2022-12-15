@@ -61,5 +61,19 @@ def show(ctx: typer.Context, name: str) -> None:
     views.print_model(group)
 
 
+@app.command()
+def authorize(ctx: typer.Context, id_: str, pass_path: str) -> None:
+    """Authorize a group or person to a directory of the password store.
+
+    Args:
+        ctx: Click context
+        id_: Unique identifier of a group or person. It can be the group name, person
+            name, email or gpg key.
+        path: directory to give access to.
+    """
+    auth = ctx.obj["deps"].auth
+    services.authorize(auth, id_, pass_path)
+
+
 if __name__ == "__main__":
     app()

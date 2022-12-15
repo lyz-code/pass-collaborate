@@ -7,7 +7,10 @@ import pytest
 from pydantic import EmailStr
 
 from pass_collaborate.adapters import AuthStore, KeyStore, PassStore
-from pass_collaborate.entrypoints.dependencies import configure_password_store
+from pass_collaborate.entrypoints.dependencies import (
+    Dependencies,
+    configure_dependencies,
+)
 from pass_collaborate.model import User
 
 
@@ -19,49 +22,44 @@ def work_dir_(tmp_path: Path) -> Path:
     return tmp_path
 
 
-@pytest.fixture(name="key")
-def key_(work_dir: Path) -> KeyStore:
-    """Create a KeyStore on the working dir."""
-    gpg_dir = work_dir / "gpg" / "admin"
-    key = KeyStore(key_dir=gpg_dir)
-    return key
+@pytest.fixture(name="deps")
+def deps_(work_dir: Path) -> Dependencies:
+    """Create the Dependencies of the program."""
+    return configure_dependencies(
+        pass_dir=(work_dir / ".password-store"), key_dir=(work_dir / "gpg" / "admin")
+    )
 
 
 @pytest.fixture(name="auth")
-def auth_(work_dir: Path) -> AuthStore:
+def auth_(deps: Dependencies) -> AuthStore:
     """Create an AuthStore on the working dir."""
-    auth_file = work_dir / ".password-store" / ".auth.yaml"
-    auth_file.touch()
-    auth = AuthStore()
-    auth.load(auth_file)
-    return auth
+    return deps.auth
 
 
 @pytest.fixture(name="pass_")
-def pass_(work_dir: Path) -> PassStore:
+def pass_(deps: Dependencies) -> PassStore:
     """Create an PassStore with admin rights."""
-    return configure_password_store(
-        pass_dir=work_dir / ".password-store",
-        key_dir=work_dir / "gpg" / "admin",
-    )
+    return deps.pass_
 
 
-@pytest.fixture(name="pass_dev")
-def pass_dev_(work_dir: Path) -> PassStore:
-    """Create an PassStore with admin rights."""
-    return configure_password_store(
-        pass_dir=work_dir / ".password-store",
-        key_dir=work_dir / "gpg" / "developer",
-    )
+@pytest.fixture(name="key")
+def key_(deps: Dependencies) -> KeyStore:
+    """Create a KeyStore with admin rights."""
+    return deps.key
 
 
-@pytest.fixture(name="pass_attack")
-def pass_attack_(work_dir: Path) -> PassStore:
-    """Create an PassStore with admin rights."""
-    return configure_password_store(
-        pass_dir=work_dir / ".password-store",
-        key_dir=work_dir / "gpg" / "attacker",
-    )
+@pytest.fixture(name="key_dev")
+def key_dev_(work_dir: Path) -> KeyStore:
+    """Create an KeyStore with developer rights."""
+    gpg_dir = work_dir / "gpg" / "developer"
+    return KeyStore(key_dir=gpg_dir)
+
+
+@pytest.fixture(name="key_attacker")
+def key_attack_(work_dir: Path) -> KeyStore:
+    """Create an KeyStore with attacker rights."""
+    gpg_dir = work_dir / "gpg" / "attacker"
+    return KeyStore(key_dir=gpg_dir)
 
 
 @pytest.fixture(name="developer")

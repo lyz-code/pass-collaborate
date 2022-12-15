@@ -1,6 +1,6 @@
 """Test the implementation of the AuthStore."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 import pytest
 
@@ -11,7 +11,7 @@ from ...factories import UserFactory
 
 if TYPE_CHECKING:
     from pass_collaborate.adapters import AuthStore
-    from pass_collaborate.model import User
+    from pass_collaborate.model import GPGKey, User
 
 
 def test_raises_exception_if_group_exists(auth: "AuthStore") -> None:
@@ -105,3 +105,32 @@ def test_get_user_raises_exception_if_more_than_one(
         TooManyError, match="More than one user matched the selected criteria"
     ):
         auth.get_user(identifier)
+
+
+@pytest.mark.parametrize(
+    ("identifier", "out"),
+    [
+        ("Marie", ["8DFE8782CD025ED6220D305115575911602DDD94"]),
+        ("developer@example.org", ["8DFE8782CD025ED6220D305115575911602DDD94"]),
+        (
+            "8DFE8782CD025ED6220D305115575911602DDD94",
+            ["8DFE8782CD025ED6220D305115575911602DDD94"],
+        ),
+        ("developers", ["8DFE8782CD025ED6220D305115575911602DDD94"]),
+        ("not_existent_group_or_user", []),
+    ],
+)
+def test_get_keys_happy_path(
+    auth: "AuthStore", developer: "User", identifier: str, out: List["GPGKey"]
+) -> None:
+    """
+    Given: Two valid users and a group
+    When: getting by the user email, key or name, or group name, or non matching
+    Then: the user is returned
+    """
+    auth.add_user(developer.name, developer.key, developer.email)
+    auth.add_group(name="developers", users=["developer@example.org"])
+
+    result = auth.get_keys(identifier)
+
+    assert result == out

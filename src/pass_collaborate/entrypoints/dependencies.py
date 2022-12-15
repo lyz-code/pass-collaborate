@@ -14,6 +14,7 @@ class Dependencies(BaseModel):
 
     pass_: PassStore
     auth: AuthStore
+    key: KeyStore
 
     class Config:
         """Configure the pydantic model."""
@@ -30,33 +31,10 @@ def configure_dependencies(pass_dir: Path, key_dir: Path) -> Dependencies:
         key_dir: Directory where the `gnupg` data lives.
     """
     return Dependencies(
-        pass_=configure_password_store(pass_dir, key_dir),
+        pass_=PassStore(store_dir=pass_dir),
+        key=KeyStore(key_dir),
         auth=configure_authentication_store(pass_dir),
     )
-
-
-@lru_cache()
-def configure_password_store(pass_dir: Path, key_dir: Path) -> PassStore:
-    """Configure the PassStore adapter.
-
-    Args:
-        pass_dir: Directory where the `pass` password store data lives.
-        key_dir: Directory where the `gnupg` data lives.
-    """
-    return PassStore(
-        store_dir=pass_dir,
-        key=configure_key_store(key_dir),
-    )
-
-
-@lru_cache()
-def configure_key_store(key_dir: Path) -> KeyStore:
-    """Configure the KeyStore adapter.
-
-    Args:
-        key_dir: Directory where the `gnupg` data lives.
-    """
-    return KeyStore(key_dir=key_dir)
 
 
 @lru_cache()
