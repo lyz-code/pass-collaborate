@@ -115,18 +115,27 @@ class PassStore(BaseModel):
         * For directories it traverses the paths to find the first .gpgid file,
             returning it's content.
 
+        If the `path` is None, it will check all keys stored in all .gpg-id files in the password store.
+
         Args:
             path: A real path to an element of the pass store.
             new_keys: List of keys to add to the allowed_keys
         """
-        path = path or self.store_dir
         new_keys = new_keys or []
-        existent_keys = self._gpg_id_file(path).read_text().splitlines()
 
-        return existent_keys + new_keys
+        if path: 
+            existent_keys = self._gpg_id_file(path).read_text().splitlines()
+        else:
+            existent_keys = []
+            for gpg_id in self.store_dir.rglob('.gpg-id'):
+                existent_keys.extend(gpg_id.read_text().splitlines())
+
+        return list(set(existent_keys + new_keys))
 
     def authorize(self, id_: str, pass_dir_path: str) -> None:
         """Authorize a group or person to a directory of the password store.
+
+        It will tweak the `.gpg-id` file to specify the desired access and it will reencrypt the files of that directory.
 
         Args:
             id_: Unique identifier of a group or person. It can be the group name,
@@ -140,6 +149,7 @@ class PassStore(BaseModel):
                 the .gpg-id file, the next time someone reencrypts the file using `pass`
                 directly, the change will be overwritten. We could handle this case, but
                 not for the MVP.
+
         """
         if self.path(pass_dir_path).is_file():
             raise ValueError(
@@ -147,11 +157,44 @@ class PassStore(BaseModel):
                 "please use the parent directory."
             )
 
-        new_key = self.key.get_key(id_)
+        # Deduce the new keys to add
+        new_keys = self.find_keys(id_)
 
+        # Re-encrypt all the password files
         for path in self._pass_paths(pass_dir_path):
             log.info(f"Authorizing {id_} to access password {self._pass_path(path)}")
-            self.key.encrypt(path, self._allowed_keys(path=path, new_keys=[new_key]))
+            self.key.encrypt(path, self.allowed_keys(path=path, new_keys=new_keys))
+
+        # Edit the .gpg-id file to edit the authorization
+        self.add_keys_to_gpg_id(pass_dir_path, new_keys)
+
+    def find_keys(self, id_: str) -> List[GPGKey]:
+        """Return the gpg keys associated to an identifier.
+
+        Args:
+            id_: Unique identifier of a group or person. It can be the group name,
+                person name, email or gpg key.
+        """
+        keys = self.auth.find_keys(id_)
+        return keys
+
+    def add_keys_to_gpg_id(self, pass_dir_path: str, new_keys: List[GPGKey]) -> None:
+        """Add GPG keys to the .gpg-id file of a `pass` password store directory.
+
+        Args:
+            pass_dir_path: internal path of a directory of the password store.
+                Not a real Path
+            new_keys: List of keys to add to the allowed_keys
+        """
+        path = self.path(pass_dir_path)
+        desired_gpg_id = path / '.gpg-id'
+        active_gpg_id = self._gpg_id_file(path)
+
+        if desired_gpg_id != active_gpg_id:
+            old_keys = active_gpg_id.read_text().splitlines() 
+        else:
+            old_keys = desired_gpg_id.read_text().splitlines() 
+        desired_gpg_id.write_text('\n'.join(set(old_keys + new_keys)))
 
     def can_decrypt(self, path: Path) -> bool:
         """Test if the user can decrypt a file.

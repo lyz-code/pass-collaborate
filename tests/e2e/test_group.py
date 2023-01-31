@@ -2,6 +2,7 @@
 
 import re
 from typing import TYPE_CHECKING, List
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -119,40 +120,70 @@ def test_group_authorize_a_directory(
     developer: User,
 ) -> None:
     """
-    Given: A configured environment and a group added
+    Given: A configured environment and a group added. With no `.gpg-id` file in the directory we want to change the permissions.
     When: calling group authorize command on a subdirectory either with a group name
         or a user identifier.
-    Then: The group members are authorized to access the data.
+    Then: The group members are authorized to access the data and the .gpg-id file of the directory contains the new key.
     """
+    gpg_id = Path(pass_.store_dir / 'web' / '.gpg-id')
+    assert not gpg_id.is_file()
     auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     auth.add_group(name="developers", users=["developer@example.org"])
     # Check that the permissions are right
     for element in ["web", "database", "bastion"]:
         assert pass_.has_access(element)
         assert not pass_dev.has_access(element)
+    for environment in ('production', 'staging'):
+        assert pass_.can_decrypt(pass_.path(f'web/{environment}'))
+        assert not pass_dev.can_decrypt(pass_.path(f'web/{environment}'))
 
     result = runner.invoke(app, ["group", "authorize", entity, "web"])
 
     assert result.exit_code == 0
     auth.reload()
     assert pass_dev.has_access("web")
+    for environment in ('production', 'staging'):
+        assert pass_.can_decrypt(pass_.path(f'web/{environment}'))
+        assert pass_dev.can_decrypt(pass_.path(f'web/{environment}'))
     # Check that the permissions of the rest of the store have not changed.
     assert pass_.has_access("web")
     for element in ["database", "bastion"]:
         assert pass_.has_access(element)
         assert not pass_dev.has_access(element)
+    assert '8DFE8782CD025ED6220D305115575911602DDD94' in gpg_id.read_text()
 
 
-@pytest.mark.skip("Not yet}")
-def test_group_authorize_cant_authorize_file() -> None:
+def test_group_authorize_cant_authorize_file(runner: CliRunner) -> None:
     """
-    Given:
-    When:
-    Then:
+    Given: A configured environment
+    When: Trying to authorize a file
+    Then: An error is raised as we don't yet support giving granular permissions to files.
     """
-    result = False
+    runner.mix_stderr = False
+    result = runner.invoke(app, ["group", "authorize", 'user', "bastion"])
 
-    assert result
+    assert result.exit_code == 2
+    assert 'Authorizing access to a file is not yet supported' in result.stderr
+
+
+def test_group_authorize_cant_authorize_id_that_matches_two_elements(
+    runner: CliRunner, 
+    auth: 'AuthStore',
+    developer: User,
+    attacker: User,
+) -> None:
+    """
+    Given: A configured environment with two users with the same name
+    When: Trying to authorize a directory with the email which is shared by two users
+    Then: An error is raised as we don't know which user has to be authorized
+    """
+    runner.mix_stderr = False
+    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    auth.add_user(name=attacker.name, email=developer.email, key=attacker.key)
+    result = runner.invoke(app, ["group", "authorize", developer.email, "web"])
+
+    assert result.exit_code == 401
+    assert 'More than one user matched the selected criteria' in result.stderr
 
 
 @pytest.mark.skip("Not yet}")

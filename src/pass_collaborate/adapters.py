@@ -3,12 +3,12 @@
 from gnupg import GPG
 from pathlib import Path
 from typing import List
-from .exceptions import DecryptionError, NotFoundError, TooManyError
+from .exceptions import DecryptionError, NotFoundError, TooManyError, EncryptionError
 
 class KeyStore:
     """Define the adapter of the `gpg` key store."""
 
-    def __init__(self, key_dir: Path) -> None:
+    def __init__(self, key_dir: Path, gpg_binary: str = '/usr/bin/gpg2') -> None:
         """Set the gpg connector.
 
         Args:
@@ -20,7 +20,7 @@ class KeyStore:
         if not key_dir.is_dir():
             raise NotFoundError(f"{key_dir} is not a directory that holds gnupg data.")
         self.key_dir = key_dir
-        self.gpg = GPG(gnupghome=key_dir)
+        self.gpg = GPG(gnupghome=key_dir, gpgbinary=gpg_binary)
 
     def __repr__(self) -> str:
         """Return a string that represents the object."""
@@ -60,6 +60,23 @@ class KeyStore:
         except (NotFoundError, DecryptionError):
             return False
         return True
+
+    def encrypt(self, path: Path, keys: List['GPGKey']) -> None:
+        """Encrypt a file for a list of keys.
+
+        Args:
+            path: Path to the file to encrypt.
+            keys: GPG keys used to encrypt the file.
+
+        Raise:
+           EncryptionError: if there is any problem when encrypting the file. 
+        """
+        encrypted_data = self.gpg.encrypt_file(str(path), keys)
+        if encrypted_data.ok:
+            path.write_bytes(encrypted_data.data)
+        else:
+            raise EncryptionError(encrypted_data.stderr)
+
 
     @property
     def private_key_fingerprints(self) -> List[str]:

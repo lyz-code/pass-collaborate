@@ -150,7 +150,7 @@ class AuthStore(GoodConf):  # type: ignore
             f"More than one user matched the selected criteria {identifier}."
         )
 
-    def get_keys(self, identifier: str) -> List['GPGKey']:
+    def find_keys(self, identifier: str) -> List['GPGKey']:
         """Return the gpg keys that matches the identifier.
 
         Args:

@@ -49,6 +49,15 @@ def developer_() -> User:
         key="8DFE8782CD025ED6220D305115575911602DDD94",
     )
 
+@pytest.fixture(name="attacker")
+def attacker_() -> User:
+    """Create the attacker user."""
+    return User(
+        name="Mallory",
+        email=EmailStr("mallory@example.org"),
+        key="C810FD864F7BAED8AD1D233C6E3A5366E18CBE77",
+    )
+
 @pytest.fixture(name="auth")
 def auth_(work_dir: Path) -> AuthStore:
     """Create the password store for an admin."""

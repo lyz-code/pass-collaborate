@@ -121,7 +121,7 @@ def test_get_user_raises_exception_if_more_than_one(
         ("not_existent_group_or_user", []),
     ],
 )
-def test_get_keys_happy_path(
+def test_find_keys_happy_path(
     auth: "AuthStore", developer: "User", identifier: str, out: List["GPGKey"]
 ) -> None:
     """
@@ -132,6 +132,6 @@ def test_get_keys_happy_path(
     auth.add_user(developer.name, developer.key, developer.email)
     auth.add_group(name="developers", users=["developer@example.org"])
 
-    result = auth.get_keys(identifier)
+    result = auth.find_keys(identifier)
 
     assert result == out

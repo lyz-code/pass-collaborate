@@ -3,8 +3,10 @@
 from typing import List, Optional
 
 import typer
+from rich.console import Console
 
 from .. import version, views, services
+from .. import exceptions
 
 app = typer.Typer()
 
@@ -71,8 +73,16 @@ def authorize(ctx: typer.Context, id_: str, pass_path: str) -> None:
             name, email or gpg key.
         path: directory to give access to.
     """
-    auth = ctx.obj["pass"].auth
-    services.authorize(auth, id_, pass_path)
+    pass_ = ctx.obj["pass"]
+    err_console = Console(stderr=True)
+    try:
+        pass_.authorize(id_, pass_path)
+    except ValueError as error:
+        err_console.print(str(error))
+        raise typer.Exit(code=2) from error
+    except exceptions.TooManyError as error:
+        err_console.print(str(error))
+        raise typer.Exit(code=401) from error
 
 
 if __name__ == "__main__":
