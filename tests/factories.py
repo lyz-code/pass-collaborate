@@ -4,16 +4,16 @@ from typing import Any
 
 from pydantic_factories import ModelFactory
 
-from pass_collaborate import model
+from pass_collaborate.model import auth
 
 
 class GroupFactory(ModelFactory[Any]):
     """Define factory for the Group model."""
 
-    __model__ = model.Group
+    __model__ = auth.Group
 
 
 class UserFactory(ModelFactory[Any]):
     """Define factory for the Group model."""
 
-    __model__ = model.User
+    __model__ = auth.User

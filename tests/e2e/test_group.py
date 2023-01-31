@@ -7,14 +7,12 @@ import pytest
 from typer.testing import CliRunner
 
 from pass_collaborate.entrypoints.cli import app
-from pass_collaborate.model import Group, User
-from pass_collaborate.services import has_access
+from pass_collaborate.model.auth import Group, User
 
 from ..factories import GroupFactory
 
 if TYPE_CHECKING:
-    from pass_collaborate.adapters import AuthStore, KeyStore
-    from pass_collaborate.entrypoints.dependencies import Dependencies
+    from pass_collaborate.model.pass_ import PassStore
 
 
 def test_group_add(runner: CliRunner, auth: "AuthStore") -> None:
@@ -114,8 +112,9 @@ def test_group_add_users(
 )
 def test_group_authorize_a_directory(
     runner: CliRunner,
-    deps: "Dependencies",
-    key_dev: "KeyStore",
+    pass_: 'PassStore',
+    pass_dev: 'PassStore',
+    auth: 'AuthStore',
     entity: str,
     developer: User,
 ) -> None:
@@ -125,26 +124,23 @@ def test_group_authorize_a_directory(
         or a user identifier.
     Then: The group members are authorized to access the data.
     """
-    auth = deps.auth
-    key = deps.key
-    pass_ = deps.pass_
     auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     auth.add_group(name="developers", users=["developer@example.org"])
     # Check that the permissions are right
     for element in ["web", "database", "bastion"]:
-        assert has_access(pass_, key, element)
-        assert not has_access(pass_, key_dev, element)
+        assert pass_.has_access(element)
+        assert not pass_dev.has_access(element)
 
     result = runner.invoke(app, ["group", "authorize", entity, "web"])
 
     assert result.exit_code == 0
     auth.reload()
-    assert has_access(pass_, key_dev, "web")
+    assert pass_dev.has_access("web")
     # Check that the permissions of the rest of the store have not changed.
-    assert has_access(pass_, key, "web")
+    assert pass_.has_access("web")
     for element in ["database", "bastion"]:
-        assert has_access(pass_, key, element)
-        assert not has_access(pass_, key_dev, element)
+        assert pass_.has_access(element)
+        assert not pass_dev.has_access(element)
 
 
 @pytest.mark.skip("Not yet}")

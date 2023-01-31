@@ -4,7 +4,7 @@ from typing import List, Optional
 
 import typer
 
-from .. import version, views
+from .. import version, views, services
 
 app = typer.Typer()
 
@@ -20,7 +20,7 @@ def add(
         name: name of the group
         users: users to add to the group.
     """
-    auth = ctx.obj["deps"].auth
+    auth = ctx.obj["pass"].auth
     auth.add_group(name=name, users=users)
 
 
@@ -33,7 +33,7 @@ def add_users(ctx: typer.Context, users: List[str], name: str) -> None:
         users: users to add to the group.
         name: name of the group
     """
-    auth = ctx.obj["deps"].auth
+    auth = ctx.obj["pass"].auth
     auth.add_users_to_group(name=name, users=users)
 
 
@@ -44,7 +44,7 @@ def list(ctx: typer.Context) -> None:
     Args:
         ctx: Click context
     """
-    auth = ctx.obj["deps"].auth
+    auth = ctx.obj["pass"].auth
     print("\n".join(auth.group_names))
 
 
@@ -56,7 +56,7 @@ def show(ctx: typer.Context, name: str) -> None:
         ctx: Click context
         name: name of the group
     """
-    auth = ctx.obj["deps"].auth
+    auth = ctx.obj["pass"].auth
     group = auth.get_group(name)
     views.print_model(group)
 
@@ -71,7 +71,7 @@ def authorize(ctx: typer.Context, id_: str, pass_path: str) -> None:
             name, email or gpg key.
         path: directory to give access to.
     """
-    auth = ctx.obj["deps"].auth
+    auth = ctx.obj["pass"].auth
     services.authorize(auth, id_, pass_path)
 
 

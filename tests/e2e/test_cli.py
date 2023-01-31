@@ -11,7 +11,7 @@ from pass_collaborate.entrypoints.cli import app
 from pass_collaborate.version import __version__
 
 if TYPE_CHECKING:
-    from pass_collaborate.adapters import AuthStore
+    from pass_collaborate.adapters import PassStore
 
 log = logging.getLogger(__name__)
 
@@ -27,17 +27,17 @@ def test_version(runner: CliRunner) -> None:
     )
 
 
-def test_generates_default_conf_if_none_is_available(
-    runner: CliRunner, auth: "AuthStore"
+def test_generates_default_auth_conf_if_none_is_available(
+    runner: CliRunner, pass_: "PassStore"
 ) -> None:
     """
     Given: An environment without an auth config file.
     When: calling an auth related command.
     Then: The config file is created with a template.
     """
-    os.remove(auth.config_file)
+    os.remove(pass_.auth.config_file)
 
     result = runner.invoke(app, ["group", "add", "test_group"])
 
     assert result.exit_code == 0
-    assert os.path.exists(auth.config_file)
+    assert os.path.exists(pass_.auth.config_file)

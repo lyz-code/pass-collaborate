@@ -6,8 +6,8 @@ from typing import Optional
 import typer
 
 from ..version import version_info
+from ..model.pass_ import PassStore
 from . import group, user
-from .dependencies import configure_dependencies
 
 app = typer.Typer()
 app.add_typer(group.app, name="group")
@@ -37,7 +37,7 @@ def main(
 ) -> None:
     """A pass extension that helps collectives manage the access to their passwords."""
     ctx.ensure_object(dict)
-    ctx.obj["deps"] = configure_dependencies(pass_dir=pass_dir, key_dir=key_dir)
+    ctx.obj["pass"] = PassStore(store_dir=pass_dir, key_dir=key_dir)
 
 
 if __name__ == "__main__":

@@ -3,15 +3,16 @@
 from typing import TYPE_CHECKING, List
 
 import pytest
+from contextlib import suppress
 
 from pass_collaborate.exceptions import NotFoundError, TooManyError
-from pass_collaborate.model import Group
+from pass_collaborate.model.auth import Group
 
 from ...factories import UserFactory
 
 if TYPE_CHECKING:
-    from pass_collaborate.adapters import AuthStore
-    from pass_collaborate.model import GPGKey, User
+    from pass_collaborate.model.auth import AuthStore, User
+    from pass_collaborate.model.key import GPGKey
 
 
 def test_raises_exception_if_group_exists(auth: "AuthStore") -> None:

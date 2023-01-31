@@ -86,3 +86,33 @@ def test_authorize_raises_error_if_file(pass_: "PassStore") -> None:
         ),
     ):
         pass_.authorize("developer", "bastion")
+
+
+def test_key_id_returns_error_if_no_key_is_valid(pass_attacker: 'PassStore'
+) -> None:
+    """
+    Given: A configured PassStore with the key of a user that should not have access
+    When: Trying to get the key id that works for the password store
+    Then: An exception is raised.
+    """
+    with pytest.raises(
+        NotFoundError,
+        match="The user gpg key was not found between the allowed keys",
+    ):
+        pass_attacker.key_id
+
+def test_pass_has_access_to_directory(
+    pass_: "PassStore", pass_dev: "PassStore"
+) -> None:
+    """
+    Given: A configured PassStore
+    When: checking the access to a directory that only the admin should have access.
+    Then: return true for the admin, false for the developer
+    """
+    result = {
+        "admin": pass_.has_access("web"),
+        "developer": pass_dev.has_access("web"),
+    }
+
+    assert result["admin"]
+    assert not result["developer"]
