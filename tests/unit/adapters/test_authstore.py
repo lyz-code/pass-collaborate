@@ -1,9 +1,9 @@
 """Test the implementation of the AuthStore."""
 
+from contextlib import suppress
 from typing import TYPE_CHECKING, List
 
 import pytest
-from contextlib import suppress
 
 from pass_collaborate.exceptions import NotFoundError, TooManyError
 from pass_collaborate.model.auth import Group

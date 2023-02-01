@@ -54,20 +54,20 @@ def test_can_encrypt_a_file(key: KeyStore, work_dir: Path) -> None:
     When: encrypting a file
     Then: the keystore is able to decrypt it and `pass` command too
     """
-    text = 'this is a test'
-    file_to_encrypt = work_dir / '.password-store' / "new_file.gpg"
+    text = "this is a test"
+    file_to_encrypt = work_dir / ".password-store" / "new_file.gpg"
     file_to_encrypt.write_text(text)
 
-    key.encrypt(file_to_encrypt, key.private_key_fingerprints[0]) # act
+    key.encrypt(file_to_encrypt, key.private_key_fingerprints[0])  # act
 
     assert key.decrypt(file_to_encrypt) == text
-    pass_command = sh.Command('pass')
+    pass_command = sh.Command("pass")
     pass_result = pass_command(
-        'show', 
-        'new_file', 
+        "show",
+        "new_file",
         _env={
-            'PASSWORD_STORE_DIR': str(work_dir / '.password-store'), 
-            'PASSWORD_STORE_GPG_OPTS': f"--homedir {str(work_dir/ 'gpg' / 'admin')}"
-        }
-    ).stdout.decode('utf-8')
+            "PASSWORD_STORE_DIR": str(work_dir / ".password-store"),
+            "PASSWORD_STORE_GPG_OPTS": f"--homedir {str(work_dir/ 'gpg' / 'admin')}",
+        },
+    ).stdout.decode("utf-8")
     assert pass_result == text

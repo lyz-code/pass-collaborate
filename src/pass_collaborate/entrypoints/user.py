@@ -20,5 +20,5 @@ def add(
         key: GPG key of the user.
         email: Email of the user.
     """
-    auth= ctx.obj["pass"].auth
+    auth = ctx.obj["pass"].auth
     auth.add_user(name=name, key=key, email=email)

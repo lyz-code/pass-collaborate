@@ -2,15 +2,14 @@
 import logging
 import os
 from pathlib import Path
-from typing import Generator, List, Optional, Annotated, Dict, Any
-
-from ..exceptions import DecryptionError, NotFoundError, TooManyError
-from ..adapters import KeyStore
-from .auth import AuthStore
-from .key import GPGKey
+from typing import Annotated, Any, Dict, Generator, List, Optional
 
 from pydantic import BaseModel, EmailStr, Field, root_validator  # noqa: E0611
 
+from ..adapters import KeyStore
+from ..exceptions import DecryptionError, NotFoundError, TooManyError
+from .auth import AuthStore
+from .key import GPGKey
 
 log = logging.getLogger(__name__)
 
@@ -40,12 +39,12 @@ class PassStore(BaseModel):
     @classmethod
     def set_adapters(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         """Set the adapters."""
-        values['key'] = KeyStore(key_dir=values['key_dir'])
+        values["key"] = KeyStore(key_dir=values["key_dir"])
 
         auth = AuthStore()
-        auth_file = auth.check_auth_file(values['store_dir'])
+        auth_file = auth.check_auth_file(values["store_dir"])
         auth.load(auth_file)
-        values['auth'] = auth
+        values["auth"] = auth
 
         return values
 
@@ -123,25 +122,31 @@ class PassStore(BaseModel):
         """
         new_keys = new_keys or []
 
-        if path: 
+        if path:
             existent_keys = self._gpg_id_file(path).read_text().splitlines()
         else:
             existent_keys = []
-            for gpg_id in self.store_dir.rglob('.gpg-id'):
+            for gpg_id in self.store_dir.rglob(".gpg-id"):
                 existent_keys.extend(gpg_id.read_text().splitlines())
 
         return list(set(existent_keys + new_keys))
 
-    def authorize(self, id_: str, pass_dir_path: str) -> None:
+    def authorize(
+        self,
+        pass_dir_path: str,
+        id_: Optional[str] = None,
+        new_keys: Optional[List[GPGKey]] = None,
+    ) -> None:
         """Authorize a group or person to a directory of the password store.
 
         It will tweak the `.gpg-id` file to specify the desired access and it will reencrypt the files of that directory.
 
         Args:
-            id_: Unique identifier of a group or person. It can be the group name,
-                person name, email or gpg key.
             pass_dir_path: internal path of a directory of the password store.
                 Not a real Path
+            id_: Unique identifier of a group or person. It can be the group name,
+                person name, email or gpg key. Can be used in addition to `new_keys`.
+            new_keys: List of new keys to authorize. Can be used in addition to `id_`.
 
         Raises:
             ValueError: When trying to authorize a file.
@@ -158,7 +163,9 @@ class PassStore(BaseModel):
             )
 
         # Deduce the new keys to add
-        new_keys = self.find_keys(id_)
+        new_keys = new_keys or []
+        if id_:
+            new_keys.extend(self.find_keys(id_))
 
         # Re-encrypt all the password files
         for path in self._pass_paths(pass_dir_path):
@@ -187,14 +194,14 @@ class PassStore(BaseModel):
             new_keys: List of keys to add to the allowed_keys
         """
         path = self.path(pass_dir_path)
-        desired_gpg_id = path / '.gpg-id'
+        desired_gpg_id = path / ".gpg-id"
         active_gpg_id = self._gpg_id_file(path)
 
         if desired_gpg_id != active_gpg_id:
-            old_keys = active_gpg_id.read_text().splitlines() 
+            old_keys = active_gpg_id.read_text().splitlines()
         else:
-            old_keys = desired_gpg_id.read_text().splitlines() 
-        desired_gpg_id.write_text('\n'.join(set(old_keys + new_keys)))
+            old_keys = desired_gpg_id.read_text().splitlines()
+        desired_gpg_id.write_text("\n".join(set(old_keys + new_keys)))
 
     def can_decrypt(self, path: Path) -> bool:
         """Test if the user can decrypt a file.
@@ -223,7 +230,9 @@ class PassStore(BaseModel):
             return matching_keys[0]
 
         if len(matching_keys) == 0:
-            raise NotFoundError("The user gpg key was not found between the allowed keys")
+            raise NotFoundError(
+                "The user gpg key was not found between the allowed keys"
+            )
         raise TooManyError(
             "There were more than 1 available gpg keys that is used "
             f"in the repository. Matching keys are: {matching_keys}"
@@ -253,18 +262,20 @@ class PassStore(BaseModel):
 
         return pass_path
 
-
-    def has_access(self, pass_path: str) -> bool:
+    def has_access(self, pass_path: str, id_: Optional[str] = None) -> bool:
         """Return if the user of the password store has access to an element of the store.
 
         * For files it tries to decrypt it.
         * For directories it checks if our key is in the allowed keys of the .gpgid
             file.
 
+        If id_ is not None, it will check if the entity identified by the id_ has access to the element in the store.
+
         Args:
-            pass_: Adapter of the password store of the user to test
-            key: Adapter of the gpg key store of the user to test.
             pass_path: internal path of the password store. Not a real Path
+            id_: Unique identifier of a group or person. It can be the group name,
+                person name, email or gpg key.
+
         """
         path = self.path(pass_path)
 
@@ -278,4 +289,18 @@ class PassStore(BaseModel):
             # is allowed
             return False
 
+    def add_users_to_group(self, group_name: str, usernames: List[str]) -> None:
+        """Add a list of users to an existent group.
 
+        It also reencrypts the passwords associated to that group.
+        """
+        # Update the auth store
+        new_keys = self.auth.add_users_to_group(
+            group_name=group_name, usernames=usernames
+        )
+
+        # Reencrypt the passwords that the group has access to
+        for gpg_id in self.store_dir.rglob(".gpg-id"):
+            pass_path = self._pass_path(gpg_id.parent)
+            if self.has_access(pass_path, group_name):
+                self.authorize(pass_dir_path=pass_path, new_keys=new_keys)

@@ -12,5 +12,6 @@ class TooManyError(Exception):
 class DecryptionError(Exception):
     """Model the exception of problems when decrypting a file."""
 
+
 class EncryptionError(Exception):
     """Model the exception of problems when encrypting a file."""

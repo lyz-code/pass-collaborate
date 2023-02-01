@@ -85,11 +85,10 @@ def test_authorize_raises_error_if_file(pass_: "PassStore") -> None:
             "please use the parent directory."
         ),
     ):
-        pass_.authorize("developer", "bastion")
+        pass_.authorize("bastion", "developer")
 
 
-def test_key_id_returns_error_if_no_key_is_valid(pass_attacker: 'PassStore'
-) -> None:
+def test_key_id_returns_error_if_no_key_is_valid(pass_attacker: "PassStore") -> None:
     """
     Given: A configured PassStore with the key of a user that should not have access
     When: Trying to get the key id that works for the password store
@@ -100,6 +99,7 @@ def test_key_id_returns_error_if_no_key_is_valid(pass_attacker: 'PassStore'
         match="The user gpg key was not found between the allowed keys",
     ):
         pass_attacker.key_id
+
 
 def test_pass_has_access_to_directory(
     pass_: "PassStore", pass_dev: "PassStore"

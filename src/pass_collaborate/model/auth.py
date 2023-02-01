@@ -1,18 +1,20 @@
 """Define the adapter of the Auth store."""
+import os
+import shutil
+from contextlib import suppress
+from pathlib import Path
+from typing import TYPE_CHECKING, Annotated, List, Optional
+
 from goodconf import GoodConf
 from pydantic import BaseModel, EmailStr, Field  # noqa: E0611
 from ruyaml import YAML
-from typing import TYPE_CHECKING, Annotated, List, Optional
-import shutil
-import os
-from pathlib import Path
-from contextlib import suppress
 
-from .key import GPGKey
 from ..exceptions import NotFoundError, TooManyError
+from .key import GPGKey
 
 Name = Annotated[str, Field(regex="^[0-9a-zA-Z_ ]+$")]
 Username = Name
+
 
 class Group(BaseModel):
     """Model a group of users."""
@@ -54,7 +56,6 @@ class AuthStore(GoodConf):  # type: ignore
             shutil.copyfile("assets/auth.yaml", auth_file)
 
         return auth_file
-
 
     def add_user(self, name: str, key: str, email: Optional[str] = None) -> User:
         """Create a new user.
@@ -150,7 +151,7 @@ class AuthStore(GoodConf):  # type: ignore
             f"More than one user matched the selected criteria {identifier}."
         )
 
-    def find_keys(self, identifier: str) -> List['GPGKey']:
+    def find_keys(self, identifier: str) -> List["GPGKey"]:
         """Return the gpg keys that matches the identifier.
 
         Args:
@@ -171,11 +172,16 @@ class AuthStore(GoodConf):  # type: ignore
 
         return [user.key for user in users]
 
-    def add_users_to_group(self, name: str, users: List[str]) -> None:
+    def add_users_to_group(
+        self, group_name: str, usernames: List[str]
+    ) -> List["GPGKey"]:
         """Add a list of users to an existent group."""
-        group = self.get_group(name)
+        group = self.get_group(group_name)
+        users = [self.get_user(username) for username in usernames]
         if group.users is None:
             group.users = []
 
-        group.users = list(set(group.users + users))
+        group.users = list(set(group.users + usernames))
         self.save()
+
+        return [user.key for user in users]

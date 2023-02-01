@@ -1,14 +1,17 @@
 """Define the adapters of the key stores."""
 
-from gnupg import GPG
 from pathlib import Path
 from typing import List
-from .exceptions import DecryptionError, NotFoundError, TooManyError, EncryptionError
+
+from gnupg import GPG
+
+from .exceptions import DecryptionError, EncryptionError, NotFoundError, TooManyError
+
 
 class KeyStore:
     """Define the adapter of the `gpg` key store."""
 
-    def __init__(self, key_dir: Path, gpg_binary: str = '/usr/bin/gpg2') -> None:
+    def __init__(self, key_dir: Path, gpg_binary: str = "/usr/bin/gpg2") -> None:
         """Set the gpg connector.
 
         Args:
@@ -17,6 +20,7 @@ class KeyStore:
         Raises:
             NotFoundError: If the directory doesn't exist
         """
+        key_dir = key_dir.expanduser()
         if not key_dir.is_dir():
             raise NotFoundError(f"{key_dir} is not a directory that holds gnupg data.")
         self.key_dir = key_dir
@@ -61,7 +65,7 @@ class KeyStore:
             return False
         return True
 
-    def encrypt(self, path: Path, keys: List['GPGKey']) -> None:
+    def encrypt(self, path: Path, keys: List["GPGKey"]) -> None:
         """Encrypt a file for a list of keys.
 
         Args:
@@ -69,7 +73,7 @@ class KeyStore:
             keys: GPG keys used to encrypt the file.
 
         Raise:
-           EncryptionError: if there is any problem when encrypting the file. 
+           EncryptionError: if there is any problem when encrypting the file.
         """
         encrypted_data = self.gpg.encrypt_file(str(path), keys)
         if encrypted_data.ok:
@@ -77,9 +81,7 @@ class KeyStore:
         else:
             raise EncryptionError(encrypted_data.stderr)
 
-
     @property
     def private_key_fingerprints(self) -> List[str]:
         """Return the IDs of the private keys."""
         return [key["fingerprint"] for key in self.gpg.list_keys(True)]
-

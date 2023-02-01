@@ -5,8 +5,7 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 
-from .. import version, views, services
-from .. import exceptions
+from .. import exceptions, services, version, views
 
 app = typer.Typer()
 
@@ -27,7 +26,7 @@ def add(
 
 
 @app.command()
-def add_users(ctx: typer.Context, users: List[str], name: str) -> None:
+def add_users(ctx: typer.Context, usernames: List[str], name: str) -> None:
     """Add a list of users to an existent group.
 
     Args:
@@ -35,8 +34,7 @@ def add_users(ctx: typer.Context, users: List[str], name: str) -> None:
         users: users to add to the group.
         name: name of the group
     """
-    auth = ctx.obj["pass"].auth
-    auth.add_users_to_group(name=name, users=users)
+    ctx.obj["pass"].add_users_to_group(group_name=name, usernames=usernames)
 
 
 @app.command()
@@ -76,7 +74,7 @@ def authorize(ctx: typer.Context, id_: str, pass_path: str) -> None:
     pass_ = ctx.obj["pass"]
     err_console = Console(stderr=True)
     try:
-        pass_.authorize(id_, pass_path)
+        pass_.authorize(pass_dir_path=pass_path, id_=id_)
     except ValueError as error:
         err_console.print(str(error))
         raise typer.Exit(code=2) from error

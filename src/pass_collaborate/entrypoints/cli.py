@@ -5,8 +5,8 @@ from typing import Optional
 
 import typer
 
-from ..version import version_info
 from ..model.pass_ import PassStore
+from ..version import version_info
 from . import group, user
 
 app = typer.Typer()
