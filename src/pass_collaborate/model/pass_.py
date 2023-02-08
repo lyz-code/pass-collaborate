@@ -1,14 +1,14 @@
 """Define the data models of the password store."""
-import logging
-import os
-from pathlib import Path
-from contextlib import suppress
-from typing import Annotated, Any, Dict, Generator, List, Optional
 
-from pydantic import BaseModel, EmailStr, Field, root_validator  # noqa: E0611
+import logging
+from contextlib import suppress
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Optional
+
+from pydantic import BaseModel, root_validator  # noqa: E0611
 
 from ..adapters import KeyStore
-from ..exceptions import DecryptionError, NotFoundError, TooManyError
+from ..exceptions import NotFoundError, TooManyError
 from .auth import AuthStore
 from .key import GPGKey
 
@@ -107,7 +107,10 @@ class PassStore(BaseModel):
         return self._gpg_id_file(path.parent)
 
     def allowed_keys(
-        self, path: Optional[Path] = None, add_keys: Optional[List[str]] = None, remove_keys: Optional[List[str]] = None
+        self,
+        path: Optional[Path] = None,
+        add_keys: Optional[List[str]] = None,
+        remove_keys: Optional[List[str]] = None,
     ) -> List[str]:
         """Return the allowed gpg keys of the path.
 
@@ -182,7 +185,9 @@ class PassStore(BaseModel):
 
         # Re-encrypt all the password files
         for path in self._pass_paths(pass_dir_path):
-            log.info(f"Authorizing {id_ or ','.join(keys)} to access password {self._pass_path(path)}")
+            log.info(
+                f"Authorizing {id_ or ','.join(keys)} to access password {self._pass_path(path)}"
+            )
             self.key.encrypt(path, self.allowed_keys(path=path, add_keys=keys))
 
         # Edit the .gpg-id file to edit the authorization
@@ -229,12 +234,13 @@ class PassStore(BaseModel):
 
         # Re-encrypt all the password files
         for path in self._pass_paths(pass_dir_path):
-            log.info(f"Revoking {id_ or ','.join(keys)} to access password {self._pass_path(path)}")
+            log.info(
+                f"Revoking {id_ or ','.join(keys)} to access password {self._pass_path(path)}"
+            )
             self.key.encrypt(path, self.allowed_keys(path=path, remove_keys=keys))
 
         # Edit the .gpg-id file to edit the authorization
         self.change_gpg_id_keys(pass_dir_path, add_keys=keys)
-
 
     def find_keys(self, id_: str) -> List[GPGKey]:
         """Return the gpg keys associated to an identifier.
@@ -246,7 +252,12 @@ class PassStore(BaseModel):
         keys = self.auth.find_keys(id_)
         return keys
 
-    def change_gpg_id_keys(self, pass_dir_path: str, add_keys: Optional[List[GPGKey]] = None, remove_keys: Optional[List[GPGKey]] = None) -> None:
+    def change_gpg_id_keys(
+        self,
+        pass_dir_path: str,
+        add_keys: Optional[List[GPGKey]] = None,
+        remove_keys: Optional[List[GPGKey]] = None,
+    ) -> None:
         """Add GPG keys to the .gpg-id file of a `pass` password store directory.
 
         Args:
@@ -309,7 +320,9 @@ class PassStore(BaseModel):
             f"in the repository. Matching keys are: {matching_keys}"
         )
 
-    def _pass_paths(self, pass_dir_path: Optional[str] = None) -> Generator[Path, None, None]:
+    def _pass_paths(
+        self, pass_dir_path: Optional[str] = None
+    ) -> Generator[Path, None, None]:
         """Return all the password files of a pass directory.
 
         Args:
@@ -372,7 +385,12 @@ class PassStore(BaseModel):
             # is allowed
             return False
 
-    def change_group_users(self, group_name: str, add_identifiers: Optional[List[str]] = None, remove_identifiers: Optional[List[str]] = None) -> None:
+    def change_group_users(
+        self,
+        group_name: str,
+        add_identifiers: Optional[List[str]] = None,
+        remove_identifiers: Optional[List[str]] = None,
+    ) -> None:
         """Change the list of users of an existent group.
 
         It also reencrypts the passwords associated to that group.
@@ -387,7 +405,9 @@ class PassStore(BaseModel):
 
         # Update the auth store
         new_keys, remove_keys = self.auth.change_group_users(
-            group_name=group_name, add_identifiers=add_identifiers, remove_identifiers=remove_identifiers
+            group_name=group_name,
+            add_identifiers=add_identifiers,
+            remove_identifiers=remove_identifiers,
         )
 
         # Reencrypt the passwords that the group has access to

@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-
 @pytest.fixture(name="runner")
 def fixture_runner(work_dir: Path) -> CliRunner:
     """Configure the Click cli test runner."""

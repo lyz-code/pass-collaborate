@@ -10,7 +10,6 @@ from pass_collaborate.exceptions import NotFoundError
 if TYPE_CHECKING:
     from pass_collaborate.adapters import PassStore
 
-
 @pytest.mark.parametrize(
     ("in_", "out"),
     [

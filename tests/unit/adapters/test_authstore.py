@@ -7,12 +7,11 @@ import pytest
 from pass_collaborate.exceptions import NotFoundError, TooManyError
 from pass_collaborate.model.auth import Group
 
-from ...factories import UserFactory, GroupFactory
+from ...factories import GroupFactory, UserFactory
 
 if TYPE_CHECKING:
     from pass_collaborate.model.auth import AuthStore, User
     from pass_collaborate.model.key import GPGKey
-
 
 def test_raises_exception_if_group_exists(auth: "AuthStore") -> None:
     """
@@ -135,6 +134,7 @@ def test_find_keys_happy_path(
 
     assert result == out
 
+
 def test_group_remove_users_work_on_non_existent_user():
     """
     Given: A configured group
@@ -148,6 +148,7 @@ def test_group_remove_users_work_on_non_existent_user():
 
     assert result is None
 
+
 def test_group_add_users_is_idempotent():
     """
     Given: A configured group
@@ -158,7 +159,6 @@ def test_group_add_users_is_idempotent():
     group = GroupFactory.build(users=[])
     group.add_users([user])
 
-    group.add_users([user]) # act
+    group.add_users([user])  # act
 
     assert group.users == [user.name]
-

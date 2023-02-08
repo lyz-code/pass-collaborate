@@ -30,4 +30,3 @@ def load_logger(verbose: bool = False) -> None:  # pragma no cover
             stream=sys.stderr, level=logging.INFO, format="  %(levelname)s %(message)s"
         )
         logging.getLogger("goodconf").setLevel(logging.WARN)
-

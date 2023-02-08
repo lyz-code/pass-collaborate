@@ -6,7 +6,6 @@ from pydantic_factories import ModelFactory
 
 from pass_collaborate.model import auth
 
-
 class GroupFactory(ModelFactory[Any]):
     """Define factory for the Group model."""
 

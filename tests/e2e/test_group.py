@@ -1,13 +1,13 @@
 """Test the implementation of the group command line command."""
 
+import logging
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, List
-import logging
 
 import pytest
-from typer.testing import CliRunner
 from _pytest.logging import LogCaptureFixture
+from typer.testing import CliRunner
 
 from pass_collaborate.entrypoints.cli import app
 from pass_collaborate.model.auth import Group, User
@@ -16,7 +16,6 @@ from ..factories import GroupFactory
 
 if TYPE_CHECKING:
     from pass_collaborate.model.pass_ import PassStore
-
 
 def test_group_add(runner: CliRunner, auth: "AuthStore") -> None:
     """
@@ -208,10 +207,10 @@ def test_group_add_users(
     auth.reload()
     saved_group = auth.get_group("test_group")
     assert saved_group.users is not None
-    if 'developer@example.org' in arguments:
-        assert 'Marie' in saved_group.users
-    if 'admin@example.org' in arguments:
-        assert 'Admin' in saved_group.users
+    if "developer@example.org" in arguments:
+        assert "Marie" in saved_group.users
+    if "admin@example.org" in arguments:
+        assert "Admin" in saved_group.users
 
 
 def test_group_with_associated_passwords_add_users(
@@ -265,18 +264,21 @@ def test_group_remove_user_from_group(
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
 
-    result = runner.invoke(app, ["group", "remove-users", developer.email, "developers"])
+    result = runner.invoke(
+        app, ["group", "remove-users", developer.email, "developers"]
+    )
 
     assert result.exit_code == 0
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert not pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
 
+
 def test_group_remove_user_that_is_not_part_of_group(
     runner: CliRunner,
     developer: User,
-    pass_: 'PassStore',
-    auth: 'AuthStore',
+    pass_: "PassStore",
+    auth: "AuthStore",
     caplog: LogCaptureFixture,
 ) -> None:
     """
@@ -289,7 +291,13 @@ def test_group_remove_user_that_is_not_part_of_group(
     auth.add_group(name="developers", users=[])
     pass_.auth.reload()
 
-    result = runner.invoke(app, ["group", "remove-users", developer.email, "developers"])
+    result = runner.invoke(
+        app, ["group", "remove-users", developer.email, "developers"]
+    )
 
     assert result.exit_code == 0
-    assert ("pass_collaborate.model.auth", logging.INFO, f"User {developer.name} is not part of the developers group") in caplog.record_tuples
+    assert (
+        "pass_collaborate.model.auth",
+        logging.INFO,
+        f"User {developer.name} is not part of the developers group",
+    ) in caplog.record_tuples

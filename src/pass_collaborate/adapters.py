@@ -5,8 +5,7 @@ from typing import List
 
 from gnupg import GPG
 
-from .exceptions import DecryptionError, EncryptionError, NotFoundError, TooManyError
-
+from .exceptions import DecryptionError, EncryptionError, NotFoundError
 
 class KeyStore:
     """Define the adapter of the `gpg` key store."""

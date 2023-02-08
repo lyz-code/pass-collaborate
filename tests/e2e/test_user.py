@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from pass_collaborate.adapters import AuthStore
     from pass_collaborate.model.auth import User
 
-
 def test_user_add(runner: CliRunner, auth: "AuthStore") -> None:
     """
     Given: A configured environment

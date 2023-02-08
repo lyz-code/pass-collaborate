@@ -1,13 +1,14 @@
 """Define the adapter of the Auth store."""
+
+import logging
 import os
 import shutil
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, List, Optional, Tuple
+from typing import Annotated, List, Optional, Tuple
 
 from goodconf import GoodConf
 from pydantic import BaseModel, EmailStr, Field  # noqa: E0611
-import logging
 from ruyaml import YAML
 
 from ..exceptions import NotFoundError, TooManyError
@@ -18,23 +19,24 @@ Username = Name
 
 log = logging.getLogger(__name__)
 
+
 class Group(BaseModel):
     """Model a group of users."""
 
     name: Name
     users: List[Username] = Field(default_factory=list)
 
-    def add_users(self, users: List['User']) -> None:
+    def add_users(self, users: List["User"]) -> None:
         """Add a list of users from the group."""
         self.users = list(set(self.users + [user.name for user in users]))
 
-    def remove_users(self, users: List['User']) -> None:
+    def remove_users(self, users: List["User"]) -> None:
         """Remove a list of users from the group."""
         for user in users:
             try:
                 self.users.remove(user.name)
             except ValueError:
-                log.info(f'User {user.name} is not part of the {self.name} group')
+                log.info(f"User {user.name} is not part of the {self.name} group")
 
 
 class User(BaseModel):
@@ -186,7 +188,11 @@ class AuthStore(GoodConf):  # type: ignore
 
         return [user.key for user in users]
 
-    def change_group_users(self, group_name: str, add_identifiers: Optional[List[str]] = None, remove_identifiers: Optional[List[str]] = None
+    def change_group_users(
+        self,
+        group_name: str,
+        add_identifiers: Optional[List[str]] = None,
+        remove_identifiers: Optional[List[str]] = None,
     ) -> Tuple[List["GPGKey"], List["GPGKey"]]:
         """Change the list of users of an existent group.
 
@@ -202,7 +208,7 @@ class AuthStore(GoodConf):  # type: ignore
         add_identifiers = add_identifiers or []
         remove_identifiers = remove_identifiers or []
         group = self.get_group(group_name)
-        
+
         # Add users
         new_users = [self.get_user(id_) for id_ in add_identifiers]
         group.add_users(users=new_users)

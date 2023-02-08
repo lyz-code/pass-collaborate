@@ -32,7 +32,9 @@ def add_users(ctx: typer.Context, identifiers: List[str], group_name: str) -> No
         identifiers: Unique identifiers of users to add. It can be user names, emails or gpg keys.
         group_name: name of the group
     """
-    ctx.obj["pass"].change_group_users(group_name=group_name, add_identifiers=identifiers)
+    ctx.obj["pass"].change_group_users(
+        group_name=group_name, add_identifiers=identifiers
+    )
 
 
 @app.command()
@@ -43,7 +45,9 @@ def remove_users(ctx: typer.Context, identifiers: List[str], group_name: str) ->
         identifiers: Unique identifiers of users to remove. It can be the user names, emails or gpg keys.
         group_name: name of the group
     """
-    ctx.obj["pass"].change_group_users(group_name=group_name, remove_identifiers=identifiers)
+    ctx.obj["pass"].change_group_users(
+        group_name=group_name, remove_identifiers=identifiers
+    )
 
 
 @app.command()

@@ -5,10 +5,10 @@ from typing import Optional
 
 import typer
 
+from .. import views
 from ..model.pass_ import PassStore
 from ..version import version_info
-from .. import views
-from . import group, user, load_logger
+from . import group, load_logger, user
 
 app = typer.Typer()
 app.add_typer(group.app, name="group")
@@ -35,7 +35,7 @@ def main(
         "~/.password-store", envvar="PASSWORD_STORE_DIR"
     ),
     key_dir: Path = typer.Option("~/.gnupg", envvar="GNUPGHOME"),  # noqa: M511, B008
-    verbose: bool = False, 
+    verbose: bool = False,
 ) -> None:
     """A pass extension that helps collectives manage the access to their passwords."""
     ctx.ensure_object(dict)
@@ -44,18 +44,15 @@ def main(
 
 
 @app.command()
-def access(
-        ctx: typer.Context, identifier: str
-) -> None:
+def access(ctx: typer.Context, identifier: str) -> None:
     """Add a new group.
 
     Args:
         identifier: Unique identifier of the user or group who's access to check. It can be a user name, email, gpg key or group name.
     """
-    pass_ = ctx.obj['pass']
+    pass_ = ctx.obj["pass"]
     paths = pass_.access(identifier)
     views.print_access(label=identifier, paths=paths)
-
 
 
 if __name__ == "__main__":

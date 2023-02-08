@@ -8,7 +8,6 @@ import sh
 from pass_collaborate.adapters import KeyStore
 from pass_collaborate.exceptions import NotFoundError
 
-
 def test_create_keystore_raises_exception_if_home_is_not_a_directory() -> None:
     """
     Given: A keystore adapter
