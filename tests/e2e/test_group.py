@@ -3,9 +3,11 @@
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, List
+import logging
 
 import pytest
 from typer.testing import CliRunner
+from _pytest.logging import LogCaptureFixture
 
 from pass_collaborate.entrypoints.cli import app
 from pass_collaborate.model.auth import Group, User
@@ -206,8 +208,10 @@ def test_group_add_users(
     auth.reload()
     saved_group = auth.get_group("test_group")
     assert saved_group.users is not None
-    for user in [argument for argument in arguments if "@" in argument]:
-        assert user in saved_group.users
+    if 'developer@example.org' in arguments:
+        assert 'Marie' in saved_group.users
+    if 'admin@example.org' in arguments:
+        assert 'Admin' in saved_group.users
 
 
 def test_group_with_associated_passwords_add_users(
@@ -237,3 +241,55 @@ def test_group_with_associated_passwords_add_users(
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
+
+
+def test_group_remove_user_from_group(
+    runner: CliRunner,
+    auth: "AuthStore",
+    pass_: "PassStore",
+    pass_dev: "PassStore",
+    developer: User,
+    admin: User,
+) -> None:
+    """
+    Given: A configured environment and a group authorized to some passwords
+    When: removing a user from the group
+    Then: the removed user are not able to read the group passwords
+    """
+    auth.add_user(name=admin.name, email=admin.email, key=admin.key)
+    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    auth.add_group(name="developers", users=[admin.email, developer.email])
+    pass_.auth.reload()
+    pass_.authorize(id_="developers", pass_dir_path="web")
+    for environment in ("production", "staging"):
+        assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
+        assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
+
+    result = runner.invoke(app, ["group", "remove-users", developer.email, "developers"])
+
+    assert result.exit_code == 0
+    for environment in ("production", "staging"):
+        assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
+        assert not pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
+
+def test_group_remove_user_that_is_not_part_of_group(
+    runner: CliRunner,
+    developer: User,
+    pass_: 'PassStore',
+    auth: 'AuthStore',
+    caplog: LogCaptureFixture,
+) -> None:
+    """
+    Given: A group without any user
+    When: Removing a user that is not part of the group
+    Then: A warning is raised but the program exits fine
+    """
+    caplog.set_level(logging.INFO)
+    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    auth.add_group(name="developers", users=[])
+    pass_.auth.reload()
+
+    result = runner.invoke(app, ["group", "remove-users", developer.email, "developers"])
+
+    assert result.exit_code == 0
+    assert ("pass_collaborate.model.auth", logging.INFO, f"User {developer.name} is not part of the developers group") in caplog.record_tuples

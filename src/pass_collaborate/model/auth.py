@@ -3,10 +3,11 @@ import os
 import shutil
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, List, Optional
+from typing import TYPE_CHECKING, Annotated, List, Optional, Tuple
 
 from goodconf import GoodConf
 from pydantic import BaseModel, EmailStr, Field  # noqa: E0611
+import logging
 from ruyaml import YAML
 
 from ..exceptions import NotFoundError, TooManyError
@@ -15,12 +16,25 @@ from .key import GPGKey
 Name = Annotated[str, Field(regex="^[0-9a-zA-Z_ ]+$")]
 Username = Name
 
+log = logging.getLogger(__name__)
 
 class Group(BaseModel):
     """Model a group of users."""
 
     name: Name
     users: List[Username] = Field(default_factory=list)
+
+    def add_users(self, users: List['User']) -> None:
+        """Add a list of users from the group."""
+        self.users = list(set(self.users + [user.name for user in users]))
+
+    def remove_users(self, users: List['User']) -> None:
+        """Remove a list of users from the group."""
+        for user in users:
+            try:
+                self.users.remove(user.name)
+            except ValueError:
+                log.info(f'User {user.name} is not part of the {self.name} group')
 
 
 class User(BaseModel):
@@ -172,16 +186,34 @@ class AuthStore(GoodConf):  # type: ignore
 
         return [user.key for user in users]
 
-    def add_users_to_group(
-        self, group_name: str, usernames: List[str]
-    ) -> List["GPGKey"]:
-        """Add a list of users to an existent group."""
-        group = self.get_group(group_name)
-        users = [self.get_user(username) for username in usernames]
-        if group.users is None:
-            group.users = []
+    def change_group_users(self, group_name: str, add_identifiers: Optional[List[str]] = None, remove_identifiers: Optional[List[str]] = None
+    ) -> Tuple[List["GPGKey"], List["GPGKey"]]:
+        """Change the list of users of an existent group.
 
-        group.users = list(set(group.users + usernames))
+        Args:
+            group_name: Group to change
+            add_identifiers: Unique identifier of a user to add. It can be the user name, email or gpg key.
+            remove_identifiers: Unique identifier of a user to remove. It can be the user name, email or gpg key.
+
+        Returns:
+            List of new GPG keys to authorize.
+            List of existent GPG keys to remove.
+        """
+        add_identifiers = add_identifiers or []
+        remove_identifiers = remove_identifiers or []
+        group = self.get_group(group_name)
+        
+        # Add users
+        new_users = [self.get_user(id_) for id_ in add_identifiers]
+        group.add_users(users=new_users)
+
+        # Remove users
+        users_to_remove = [self.get_user(id_) for id_ in remove_identifiers]
+        group.remove_users(users=users_to_remove)
+
         self.save()
 
-        return [user.key for user in users]
+        return (
+            [user.key for user in new_users],
+            [user.key for user in users_to_remove],
+        )

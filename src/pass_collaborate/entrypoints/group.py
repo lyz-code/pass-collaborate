@@ -17,7 +17,6 @@ def add(
     """Add a new group.
 
     Args:
-        ctx: Click context
         name: name of the group
         users: users to add to the group.
     """
@@ -26,15 +25,25 @@ def add(
 
 
 @app.command()
-def add_users(ctx: typer.Context, usernames: List[str], name: str) -> None:
+def add_users(ctx: typer.Context, identifiers: List[str], group_name: str) -> None:
     """Add a list of users to an existent group.
 
     Args:
-        ctx: Click context
-        users: users to add to the group.
-        name: name of the group
+        identifiers: Unique identifiers of users to add. It can be user names, emails or gpg keys.
+        group_name: name of the group
     """
-    ctx.obj["pass"].add_users_to_group(group_name=name, usernames=usernames)
+    ctx.obj["pass"].change_group_users(group_name=group_name, add_identifiers=identifiers)
+
+
+@app.command()
+def remove_users(ctx: typer.Context, identifiers: List[str], group_name: str) -> None:
+    """Remove a list of users from an existent group.
+
+    Args:
+        identifiers: Unique identifiers of users to remove. It can be the user names, emails or gpg keys.
+        group_name: name of the group
+    """
+    ctx.obj["pass"].change_group_users(group_name=group_name, remove_identifiers=identifiers)
 
 
 @app.command()

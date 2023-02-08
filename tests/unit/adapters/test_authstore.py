@@ -1,6 +1,5 @@
 """Test the implementation of the AuthStore."""
 
-from contextlib import suppress
 from typing import TYPE_CHECKING, List
 
 import pytest
@@ -8,7 +7,7 @@ import pytest
 from pass_collaborate.exceptions import NotFoundError, TooManyError
 from pass_collaborate.model.auth import Group
 
-from ...factories import UserFactory
+from ...factories import UserFactory, GroupFactory
 
 if TYPE_CHECKING:
     from pass_collaborate.model.auth import AuthStore, User
@@ -135,3 +134,31 @@ def test_find_keys_happy_path(
     result = auth.find_keys(identifier)
 
     assert result == out
+
+def test_group_remove_users_work_on_non_existent_user():
+    """
+    Given: A configured group
+    When: Trying to remove a user that is not part of the group
+    Then: The command doesn't remove anything but it doesn't raise an exception either
+    """
+    group = GroupFactory.build()
+    user = UserFactory.build()
+
+    result = group.remove_users(users=[user])
+
+    assert result is None
+
+def test_group_add_users_is_idempotent():
+    """
+    Given: A configured group
+    When: Adding a user that it's already in the store
+    Then: The user is not added again
+    """
+    user = UserFactory.build()
+    group = GroupFactory.build(users=[])
+    group.add_users([user])
+
+    group.add_users([user]) # act
+
+    assert group.users == [user.name]
+
