@@ -17,6 +17,7 @@ from ..factories import GroupFactory
 if TYPE_CHECKING:
     from pass_collaborate.model.pass_ import PassStore
 
+
 def test_group_add(runner: CliRunner, auth: "AuthStore") -> None:
     """
     Given: A configured environment
@@ -94,10 +95,12 @@ def test_group_authorize_a_directory(
     developer: User,
 ) -> None:
     """
-    Given: A configured environment and a group added. With no `.gpg-id` file in the directory we want to change the permissions.
-    When: calling group authorize command on a subdirectory either with a group name
-        or a user identifier.
-    Then: The group members are authorized to access the data and the .gpg-id file of the directory contains the new key.
+    Given: A configured environment and a group added. With no `.gpg-id` file
+        in the directory we want to change the permissions.
+    When: calling group authorize command on a subdirectory either with a group
+        name or a user identifier.
+    Then: The group members are authorized to access the data and the .gpg-id
+        file of the directory contains the new key.
     """
     gpg_id = Path(pass_.store_dir / "web" / ".gpg-id")
     assert not gpg_id.is_file()
@@ -131,9 +134,11 @@ def test_group_authorize_cant_authorize_file(runner: CliRunner) -> None:
     """
     Given: A configured environment
     When: Trying to authorize a file
-    Then: An error is raised as we don't yet support giving granular permissions to files.
+    Then: An error is raised as we don't yet support giving granular
+        permissions to files.
     """
     runner.mix_stderr = False
+
     result = runner.invoke(app, ["group", "authorize", "user", "bastion"])
 
     assert result.exit_code == 2
@@ -154,6 +159,7 @@ def test_group_authorize_cant_authorize_id_that_matches_two_elements(
     runner.mix_stderr = False
     auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     auth.add_user(name=attacker.name, email=developer.email, key=attacker.key)
+
     result = runner.invoke(app, ["group", "authorize", developer.email, "web"])
 
     assert result.exit_code == 401

@@ -24,7 +24,7 @@ authors = [
     {name = "Lyz", email = "lyz-code-security-advisories@riseup.net"},
 ]
 license = {text = "GPL-3.0-only"}
-requires-python = ">=3.7"
+requires-python = ">=3.7.2"
 dependencies = [
     "click>=8.1.3",
     "goodconf[yaml]>=2.0.1",
@@ -188,7 +188,6 @@ exclude = '''
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-n auto"
-# addopts = "--pdb -n auto"
 norecursedirs = [
     ".tox",
     ".git",
@@ -313,6 +312,7 @@ pylint = [
   "-W0613", # Unused argument in function, but in tests there are fixtures that even
             # though they are not used in the function directly, they are used to
             # configure the test.
+  "-R0913", # Too many arguments, but is the way to use fixtures.
 ]
 
 [tool.flakeheaven.exceptions."tests/factories.py"]

@@ -10,41 +10,37 @@ from .. import exceptions, services, version, views
 app = typer.Typer()
 
 
+# B008: Do not perform function calls in argument defaults. It's how typer 
+#   arguments are defined.
 @app.command()
 def add(
-    ctx: typer.Context, name: str, users: Optional[List[str]] = typer.Argument(None)
+    ctx: typer.Context, 
+    name: str = typer.Argument(
+        ..., 
+        help='name of the group', 
+    ),
+    users: Optional[List[str]] = typer.Argument(
+        None, 
+        help='users to add to the group'
+    ),
 ) -> None:
-    """Add a new group.
-
-    Args:
-        name: name of the group
-        users: users to add to the group.
-    """
+    """Add a new group."""
     auth = ctx.obj["pass"].auth
     auth.add_group(name=name, users=users)
 
 
 @app.command()
-def add_users(ctx: typer.Context, identifiers: List[str], group_name: str) -> None:
-    """Add a list of users to an existent group.
-
-    Args:
-        identifiers: Unique identifiers of users to add. It can be user names, emails or gpg keys.
-        group_name: name of the group
-    """
+def add_users(ctx: typer.Context, identifiers: List[str] = typer.Argument(..., help='Unique identifiers of users to add. It can be user names, emails or gpg keys.'), group_name: str = typer.Argument(...)) -> None: 
+    """Add a list of users to an existent group."""
     ctx.obj["pass"].change_group_users(
         group_name=group_name, add_identifiers=identifiers
     )
 
 
 @app.command()
-def remove_users(ctx: typer.Context, identifiers: List[str], group_name: str) -> None:
-    """Remove a list of users from an existent group.
-
-    Args:
-        identifiers: Unique identifiers of users to remove. It can be the user names, emails or gpg keys.
-        group_name: name of the group
-    """
+def remove_users(   # noqa: B008 
+                 ctx: typer.Context, identifiers: List[str] = typer.Argument(..., help='Unique identifiers of users to remove. It can be user names, emails or gpg keys.') , group_name: str = typer.Argument(...)) -> None:
+    """Remove a list of users from an existent group."""
     ctx.obj["pass"].change_group_users(
         group_name=group_name, remove_identifiers=identifiers
     )
@@ -52,38 +48,24 @@ def remove_users(ctx: typer.Context, identifiers: List[str], group_name: str) ->
 
 @app.command()
 def list(ctx: typer.Context) -> None:
-    """List existing groups.
-
-    Args:
-        ctx: Click context
-    """
+    """List existing groups."""
     auth = ctx.obj["pass"].auth
     print("\n".join(auth.group_names))
 
 
 @app.command()
 def show(ctx: typer.Context, name: str) -> None:
-    """Print the information of a group.
-
-    Args:
-        ctx: Click context
-        name: name of the group
-    """
+    """Print the information of a group."""
     auth = ctx.obj["pass"].auth
     group = auth.get_group(name)
     views.print_model(group)
 
 
 @app.command()
-def authorize(ctx: typer.Context, id_: str, pass_path: str) -> None:
-    """Authorize a group or person to a directory of the password store.
-
-    Args:
-        ctx: Click context
-        id_: Unique identifier of a group or person. It can be the group name, person
-            name, email or gpg key.
-        path: directory to give access to.
-    """
+def authorize(   # noqa: B008 
+    ctx: typer.Context, 
+    identifier: str = typer.Argument(..., help='Unique identifier of a group or person. It can be the group name, person name, email or gpg key.'), pass_path: str = typer.Argument(..., help='pass directory to give access to.')) -> None:
+    """Authorize a group or person to a directory of the password store."""
     pass_ = ctx.obj["pass"]
     err_console = Console(stderr=True)
     try:

@@ -8,7 +8,8 @@ import pytest
 from pass_collaborate.exceptions import NotFoundError
 
 if TYPE_CHECKING:
-    from pass_collaborate.adapters import PassStore
+    from pass_collaborate.model.pass_ import PassStore
+
 
 @pytest.mark.parametrize(
     ("in_", "out"),
@@ -48,8 +49,9 @@ def test_pass_path_returns_the_expected_results(
     Then: the expected results are returned
     """
     path = pass_.store_dir / in_
+    # W0212 Access to a protected member _pass_path of a client class.
 
-    result = pass_._pass_path(path)
+    result = pass_._pass_path(path)  # noqa: W0212
 
     assert result == out
 
@@ -97,7 +99,8 @@ def test_key_id_returns_error_if_no_key_is_valid(pass_attacker: "PassStore") -> 
         NotFoundError,
         match="The user gpg key was not found between the allowed keys",
     ):
-        pass_attacker.key_id
+        # W0104 Statement seems to have no effect but it does
+        pass_attacker.key_id  # noqa: W0104
 
 
 def test_pass_has_access_to_directory(

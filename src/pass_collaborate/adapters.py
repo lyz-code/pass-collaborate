@@ -7,6 +7,7 @@ from gnupg import GPG
 
 from .exceptions import DecryptionError, EncryptionError, NotFoundError
 
+
 class KeyStore:
     """Define the adapter of the `gpg` key store."""
 
@@ -78,7 +79,8 @@ class KeyStore:
         if encrypted_data.ok:
             path.write_bytes(encrypted_data.data)
         else:
-            raise EncryptionError(encrypted_data.stderr)
+            # E1101 Instance of 'Crypt' has no 'stderr' member (no-member). But it does
+            raise EncryptionError(encrypted_data.stderr)  # noqa: E1101
 
     @property
     def private_key_fingerprints(self) -> List[str]:

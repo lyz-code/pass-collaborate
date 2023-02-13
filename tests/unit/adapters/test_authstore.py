@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from pass_collaborate.model.auth import AuthStore, User
     from pass_collaborate.model.key import GPGKey
 
+
 def test_raises_exception_if_group_exists(auth: "AuthStore") -> None:
     """
     Given: an auth store
@@ -135,7 +136,7 @@ def test_find_keys_happy_path(
     assert result == out
 
 
-def test_group_remove_users_work_on_non_existent_user():
+def test_group_remove_users_work_on_non_existent_user() -> None:
     """
     Given: A configured group
     When: Trying to remove a user that is not part of the group
@@ -149,7 +150,7 @@ def test_group_remove_users_work_on_non_existent_user():
     assert result is None
 
 
-def test_group_add_users_is_idempotent():
+def test_group_add_users_is_idempotent() -> None:
     """
     Given: A configured group
     When: Adding a user that it's already in the store

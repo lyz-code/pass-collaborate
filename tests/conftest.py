@@ -10,6 +10,7 @@ from pass_collaborate.adapters import KeyStore
 from pass_collaborate.model.auth import AuthStore, User
 from pass_collaborate.model.pass_ import PassStore
 
+
 @pytest.fixture(name="work_dir")
 def work_dir_(tmp_path: Path) -> Path:
     """Create the work directory for the tests."""

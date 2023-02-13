@@ -1,11 +1,11 @@
 .DEFAULT_GOAL := test
 isort = pdm run isort src tests
 black = pdm run black --target-version py37 src tests
+autoimport = pdm run autoimport src tests
 
 .PHONY: install
 install:
 	pdm install --dev
-	pdm run pre-commit install
 
 .PHONY: update
 update:
@@ -45,6 +45,7 @@ format:
 	@echo "- Formating the code -"
 	@echo "----------------------"
 
+	$(autoimport)
 	$(isort)
 	$(black)
 

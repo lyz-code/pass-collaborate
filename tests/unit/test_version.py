@@ -5,6 +5,7 @@ import sys
 
 from pass_collaborate.version import __version__, version_info
 
+
 def test_version() -> None:
     """
     Given: Nothing

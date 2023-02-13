@@ -9,9 +9,9 @@ from typer.testing import CliRunner
 from pass_collaborate.entrypoints.cli import app
 
 if TYPE_CHECKING:
-    from pass_collaborate.adapters import AuthStore
-    from pass_collaborate.model.auth import User
+    from pass_collaborate.model.auth import User, AuthStore
     from pass_collaborate.model.pass_ import PassStore
+
 
 @pytest.mark.parametrize(
     "identifier",

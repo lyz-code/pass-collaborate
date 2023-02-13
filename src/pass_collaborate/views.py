@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.tree import Tree
 
+
 def print_model(model: BaseModel) -> None:
     """Print the attributes of a model.
 
