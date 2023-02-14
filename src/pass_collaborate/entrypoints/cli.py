@@ -44,12 +44,17 @@ def main(
 
 
 @app.command()
-def access(ctx: typer.Context, identifier: str) -> None:
-    """Add a new group.
-
-    Args:
-        identifier: Unique identifier of the user or group who's access to check. It can be a user name, email, gpg key or group name.
-    """
+def access(
+    ctx: typer.Context,
+    identifier: str = typer.Argument(
+        ...,
+        help=(
+            "Unique identifier of the user or group who's access to check. "
+            "It can be a user name, email, gpg key or group name."
+        ),
+    ),
+) -> None:
+    """Add a new group."""
     pass_ = ctx.obj["pass"]
     paths = pass_.access(identifier)
     views.print_access(label=identifier, paths=paths)

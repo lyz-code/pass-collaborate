@@ -1,7 +1,7 @@
 """Define the views of the program."""
 
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 from pydantic import BaseModel  # noqa: E0611
 from rich.console import Console
@@ -38,7 +38,7 @@ def print_access(label: str, paths: List[str]) -> None:
     """
     # Create the tree structure
     tree = Tree(f"Password access for {label}")
-    trees = {}
+    trees: Dict[str, Tree] = {}
 
     for _path in paths:
         path = Path(_path)

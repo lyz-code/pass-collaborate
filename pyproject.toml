@@ -315,6 +315,16 @@ pylint = [
   "-R0913", # Too many arguments, but is the way to use fixtures.
 ]
 
+
+[tool.flakeheaven.exceptions."src/pass_collaborate/entrypoints/"]
+flake8-bugbear = [
+  "-B008", # Do not perform function calls in argument defaults. It's how typer
+           #   arguments are defined.
+]
+flake8-mutable = [
+  "-M511", # Mutable default arg. It's how typer args are defined
+]
+
 [tool.flakeheaven.exceptions."tests/factories.py"]
 pylint = [
   "-R0903", # Too few methods warning, but is the way to define factoryboy factories.
@@ -372,5 +382,6 @@ module = [
     "goodconf",
     "pytest",
     "gnupg.*",
+    "sh.*",
 ]
 ignore_missing_imports = true

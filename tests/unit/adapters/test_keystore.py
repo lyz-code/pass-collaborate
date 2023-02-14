@@ -58,7 +58,7 @@ def test_can_encrypt_a_file(key: KeyStore, work_dir: Path) -> None:
     file_to_encrypt = work_dir / ".password-store" / "new_file.gpg"
     file_to_encrypt.write_text(text)
 
-    key.encrypt(file_to_encrypt, key.private_key_fingerprints[0])  # act
+    key.encrypt(file_to_encrypt, [key.private_key_fingerprints[0]])  # act
 
     assert key.decrypt(file_to_encrypt) == text
     pass_command = sh.Command("pass")
@@ -71,3 +71,16 @@ def test_can_encrypt_a_file(key: KeyStore, work_dir: Path) -> None:
         },
     ).stdout.decode("utf-8")
     assert pass_result == text
+
+
+def test_can_list_recipients_of_file(key: KeyStore, work_dir: Path) -> None:
+    """
+    Given: A keystore adapter
+    When: listing the keys that can decrypt a file
+    Then: the output is the expected one
+    """
+    file_to_check = work_dir / ".password-store" / "bastion.gpg"
+
+    result = key.list_recipients(file_to_check)
+
+    assert result == [key.private_key_fingerprints[0]]

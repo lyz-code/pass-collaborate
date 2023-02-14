@@ -1,11 +1,14 @@
 """Define the adapters of the key stores."""
 
 from pathlib import Path
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from gnupg import GPG
 
 from .exceptions import DecryptionError, EncryptionError, NotFoundError
+
+if TYPE_CHECKING:
+    from .model.key import GPGKey
 
 
 class KeyStore:
@@ -81,6 +84,23 @@ class KeyStore:
         else:
             # E1101 Instance of 'Crypt' has no 'stderr' member (no-member). But it does
             raise EncryptionError(encrypted_data.stderr)  # noqa: E1101
+
+    def list_recipients(self, path: Path) -> List["GPGKey"]:
+        """List the keys that can decrypt a file.
+
+        Args:
+            path: Path to the file to check.
+        """
+        keys = []
+        for short_key in self.gpg.get_recipients_file(str(path)):
+            try:
+                keys.append(self.gpg.list_keys(keys=[short_key])[0]["fingerprint"])
+            except IndexError as error:
+                raise NotFoundError(
+                    f"Could not find gpg key with id {short_key}"
+                ) from error
+
+        return keys
 
     @property
     def private_key_fingerprints(self) -> List[str]:

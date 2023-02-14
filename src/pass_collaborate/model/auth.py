@@ -5,7 +5,7 @@ import os
 import shutil
 from contextlib import suppress
 from pathlib import Path
-from typing import Annotated, List, Optional, Tuple
+from typing import Annotated, Dict, List, Optional
 
 from goodconf import GoodConf
 from pydantic import BaseModel, EmailStr, Field  # noqa: E0611
@@ -16,6 +16,9 @@ from .key import GPGKey
 
 Name = Annotated[str, Field(regex="^[0-9a-zA-Z_ ]+$")]
 Username = Name
+Identifier = Name
+GPGIDPath = str
+
 
 log = logging.getLogger(__name__)
 
@@ -28,11 +31,14 @@ class Group(BaseModel):
 
     def add_users(self, users: List["User"]) -> None:
         """Add a list of users from the group."""
+        for user in users:
+            log.info(f"Adding user {user.name} to group {self.name}")
         self.users = list(set(self.users + [user.name for user in users]))
 
     def remove_users(self, users: List["User"]) -> None:
         """Remove a list of users from the group."""
         for user in users:
+            log.info(f"Removing user {user.name} from group {self.name}")
             try:
                 self.users.remove(user.name)
             except ValueError:
@@ -47,21 +53,23 @@ class User(BaseModel):
     key: GPGKey
 
 
-class AuthStore(GoodConf):  # type: ignore
+class AuthStore(GoodConf):
     """Define the adapter of the authorisation store."""
 
     groups: List[Group]
     users: List[User]
+    access: Dict[GPGIDPath, List[Identifier]] = Field(default_factory=dict)
 
     class Config:
         """Define the default files to check."""
 
         default_files = [
-            os.path.expanduser("~/.password-store/.auth.yaml"),
             ".auth.yaml",
+            os.path.expanduser("~/.password-store/.auth.yaml"),
         ]
 
-    def check_auth_file(self, store_dir: Path) -> str:
+    @staticmethod
+    def check_auth_file(store_dir: Path) -> Path:
         """Return the AuthStore configuration file.
 
         If the file doesn't exist it will copy the default template.
@@ -124,13 +132,16 @@ class AuthStore(GoodConf):  # type: ignore
     @property
     def config_file(self) -> str:
         """Return the path to the config file."""
-        # E1101: Class 'Config' has no '_config_file' member. But it does
-        # W0212: Accessing an internal attribute of an external library. I know...
-        return self.Config._config_file  # type: ignore # noqa: E1101, W0212
+        return str(self._config_file)
 
     def reload(self) -> None:
         """Reload the contents of the authentication store."""
         self.load(self.config_file)
+
+    def load(self, filename: Optional[str] = None) -> None:
+        """Load a configuration file."""
+        self._config_file = filename
+        super().load(filename)
 
     def save(self) -> None:
         """Save the contents of the authentication store."""
@@ -146,7 +157,7 @@ class AuthStore(GoodConf):  # type: ignore
         except IndexError as error:
             raise NotFoundError(f"The group {name} doesn't exist.") from error
 
-    def get_user(self, identifier: str) -> User:
+    def get_user(self, identifier: Identifier) -> User:
         """Return the user that matches the user identifier.
 
         Args:
@@ -167,7 +178,7 @@ class AuthStore(GoodConf):  # type: ignore
             f"More than one user matched the selected criteria {identifier}."
         )
 
-    def find_keys(self, identifier: str) -> List["GPGKey"]:
+    def find_keys(self, identifier: Identifier) -> List["GPGKey"]:
         """Return the gpg keys that matches the identifier.
 
         Args:
@@ -191,19 +202,17 @@ class AuthStore(GoodConf):  # type: ignore
     def change_group_users(
         self,
         group_name: str,
-        add_identifiers: Optional[List[str]] = None,
-        remove_identifiers: Optional[List[str]] = None,
-    ) -> Tuple[List["GPGKey"], List["GPGKey"]]:
+        add_identifiers: Optional[List[Identifier]] = None,
+        remove_identifiers: Optional[List[Identifier]] = None,
+    ) -> None:
         """Change the list of users of an existent group.
 
         Args:
             group_name: Group to change
-            add_identifiers: Unique identifier of a user to add. It can be the user name, email or gpg key.
-            remove_identifiers: Unique identifier of a user to remove. It can be the user name, email or gpg key.
-
-        Returns:
-            List of new GPG keys to authorize.
-            List of existent GPG keys to remove.
+            add_identifiers: Unique identifier of a user to add. It can be the
+                user name, email or gpg key.
+            remove_identifiers: Unique identifier of a user to remove. It can
+                be the user name, email or gpg key.
         """
         add_identifiers = add_identifiers or []
         remove_identifiers = remove_identifiers or []
@@ -219,7 +228,80 @@ class AuthStore(GoodConf):  # type: ignore
 
         self.save()
 
-        return (
-            [user.key for user in new_users],
-            [user.key for user in users_to_remove],
-        )
+    def authorize(
+        self,
+        gpg_id: GPGIDPath,
+        identifier: Identifier,
+    ) -> None:
+        """Authorize a group or person to a directory of the password store.
+
+        It will tweak the `.gpg-id` file to specify the desired access and it
+        will reencrypt the files of that directory.
+
+        Args:
+            pass_dir_path: internal path of a directory of the password store.
+                Not a real Path
+            identifier: Unique identifier of a group or person.
+                It can be the group name, person name, email or gpg key. Can be
+                used in addition to `keys`.
+
+        Raises:
+            ValueError: When trying to authorize a file.
+                If we authorize a file with keys different than the ones
+                specified on the .gpg-id file, the next time someone reencrypts
+                the file using `pass` directly, the change will be overwritten.
+                We could handle this case, but not for the MVP.
+
+        """
+        try:
+            access = self.access[gpg_id]
+        except KeyError:
+            access = []
+
+        # new users
+        with suppress(NotFoundError, TooManyError):
+            user = self.get_user(identifier)
+            new_access = user.name
+            if new_access not in access:
+                log.info(f'  Authorizing access to user {user.name}: {user.email} ({user.key})')
+                access.append(new_access)
+
+        # new groups
+        with suppress(NotFoundError):
+            group = self.get_group(identifier)
+            if user:
+                raise ValueError(
+                    f'Both user {user.name} and group {group.name} matched identifier {identifier}, cancelling authorization.'
+                )
+            new_access = group.name
+            if new_access not in access:
+                log.info(f'  Authorizing access to group {group.name}')
+                access.append(new_access)
+
+        self.access[gpg_id] = access
+        
+
+    def allowed_keys(
+        self,
+        gpg_id: GPGIDPath,
+    ) -> List[GPGKey]:
+        """Return the allowed gpg keys of a gpg-id path.
+
+        Args:
+            path: A real path to an element of the pass store.
+
+        Raises:
+            NotFoundError: If there is no data of that gpg-id file.
+        """
+        try:
+            authorees = self.access[gpg_id]
+        except KeyError as error:
+            raise NotFoundError(
+                f"There is no access information for the gpg-id file {gpg_id}"
+            )
+
+        keys = []
+        for authoree in authorees:
+            keys.extend(self.find_keys(authoree))
+
+        return keys

@@ -11,7 +11,8 @@ from pass_collaborate.entrypoints.cli import app
 from pass_collaborate.version import __version__
 
 if TYPE_CHECKING:
-    from pass_collaborate.adapters import PassStore
+    from pass_collaborate.model.pass_ import PassStore
+
 
 log = logging.getLogger(__name__)
 

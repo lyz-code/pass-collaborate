@@ -8,17 +8,10 @@ app = typer.Typer()
 @app.command()
 def add(
     ctx: typer.Context,
-    name: str,
-    key: str,
-    email: str,
+    name: str = typer.Argument(..., help="Name of the user"),
+    key: str = typer.Argument(..., help="GPG key of the user"),
+    email: str = typer.Argument(..., help="Email of the user"),
 ) -> None:
-    """Add a new user.
-
-    Args:
-        ctx: Click context.
-        name: Name of the user.
-        key: GPG key of the user.
-        email: Email of the user.
-    """
+    """Add a new user."""
     auth = ctx.obj["pass"].auth
     auth.add_user(name=name, key=key, email=email)

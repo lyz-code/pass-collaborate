@@ -80,7 +80,7 @@ def auth_(work_dir: Path) -> AuthStore:
     """Create the password store for an admin."""
     auth = AuthStore()
     auth_file = auth.check_auth_file(work_dir / ".password-store")
-    auth.load(auth_file)
+    auth.load(str(auth_file))
     return auth
 
 

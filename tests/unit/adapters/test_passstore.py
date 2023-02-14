@@ -1,9 +1,11 @@
 """Test the implementation of the PassStore."""
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from _pytest.logging import LogCaptureFixture
 
 from pass_collaborate.exceptions import NotFoundError
 
@@ -89,18 +91,22 @@ def test_authorize_raises_error_if_file(pass_: "PassStore") -> None:
         pass_.authorize("bastion", "developer")
 
 
-def test_key_id_returns_error_if_no_key_is_valid(pass_attacker: "PassStore") -> None:
+def test_key_id_returns_warning_if_no_key_is_valid(
+    pass_attacker: "PassStore", caplog: LogCaptureFixture
+) -> None:
     """
     Given: A configured PassStore with the key of a user that should not have access
     When: Trying to get the key id that works for the password store
-    Then: An exception is raised.
+    Then: A warning is raised.
     """
-    with pytest.raises(
-        NotFoundError,
-        match="The user gpg key was not found between the allowed keys",
-    ):
-        # W0104 Statement seems to have no effect but it does
-        pass_attacker.key_id  # noqa: W0104
+    # W0104 Statement seems to have no effect but it does
+    pass_attacker.key_id  # act
+
+    assert (
+        "pass_collaborate.model.pass_",
+        logging.WARNING,
+        "The user gpg key was not found between the allowed keys in the password store",
+    ) in caplog.record_tuples
 
 
 def test_pass_has_access_to_directory(

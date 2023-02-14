@@ -15,6 +15,7 @@ from pass_collaborate.model.auth import Group, User
 from ..factories import GroupFactory
 
 if TYPE_CHECKING:
+    from pass_collaborate.model.auth import AuthStore
     from pass_collaborate.model.pass_ import PassStore
 
 
@@ -106,10 +107,11 @@ def test_group_authorize_a_directory(
     assert not gpg_id.is_file()
     auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     auth.add_group(name="developers", users=["developer@example.org"])
+    pass_.auth.reload()
     # Check that the permissions are right
     for element in ["web", "database", "bastion"]:
         assert pass_.has_access(element)
-        assert not pass_dev.has_access(element)
+        assert not pass_.has_access(element, identifier=developer.email)
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert not pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
@@ -118,7 +120,7 @@ def test_group_authorize_a_directory(
 
     assert result.exit_code == 0
     auth.reload()
-    assert pass_dev.has_access("web")
+    assert pass_.has_access("web", identifier=developer.email)
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
@@ -126,8 +128,10 @@ def test_group_authorize_a_directory(
     assert pass_.has_access("web")
     for element in ["database", "bastion"]:
         assert pass_.has_access(element)
-        assert not pass_dev.has_access(element)
-    assert "8DFE8782CD025ED6220D305115575911602DDD94" in gpg_id.read_text()
+        assert not pass_.has_access(element, identifier=developer.email)
+    assert "8DFE8782CD025ED6220D305115575911602DDD94" in gpg_id.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_group_authorize_cant_authorize_file(runner: CliRunner) -> None:
@@ -221,7 +225,6 @@ def test_group_add_users(
 
 def test_group_with_associated_passwords_add_users(
     runner: CliRunner,
-    auth: "AuthStore",
     pass_: "PassStore",
     pass_dev: "PassStore",
     developer: User,
@@ -232,10 +235,10 @@ def test_group_with_associated_passwords_add_users(
     When: adding users to a group
     Then: the new users are able to read the group passwords
     """
-    auth.add_user(name=admin.name, email=admin.email, key=admin.key)
-    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    auth.add_group(name="developers", users=[admin.email])
-    pass_.authorize(id_="developers", pass_dir_path="web")
+    pass_.auth.add_user(name=admin.name, email=admin.email, key=admin.key)
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group(name="developers", users=[admin.email])
+    pass_.authorize(identifier="developers", pass_dir_path="web")
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert not pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
@@ -245,6 +248,7 @@ def test_group_with_associated_passwords_add_users(
     assert result.exit_code == 0
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
+        pytest.set_trace()
         assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
 
 
@@ -265,7 +269,7 @@ def test_group_remove_user_from_group(
     auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     auth.add_group(name="developers", users=[admin.email, developer.email])
     pass_.auth.reload()
-    pass_.authorize(id_="developers", pass_dir_path="web")
+    pass_.authorize(identifier="developers", pass_dir_path="web")
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
