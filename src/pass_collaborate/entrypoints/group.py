@@ -79,19 +79,20 @@ def show(ctx: typer.Context, name: str) -> None:
 def authorize(  # noqa: B008
     ctx: typer.Context,
     group_name: str,
-    pass_path: str = typer.Argument(..., help="pass directory to give access to."),
+    pass_paths: List[str] = typer.Argument(..., help="pass directories to give access to."),
 ) -> None:
     """Authorize a group to a directory of the password store."""
     pass_ = ctx.obj["pass"]
     err_console = Console(stderr=True)
-    try:
-        pass_.authorize(pass_dir_path=pass_path, group_name=group_name)
-    except ValueError as error:
-        err_console.print(str(error))
-        raise typer.Exit(code=2) from error
-    except exceptions.TooManyError as error:
-        err_console.print(str(error))
-        raise typer.Exit(code=401) from error
+    for path in pass_paths:
+        try:
+            pass_.change_access(pass_dir_path=path, add_identifiers=[group_name])
+        except ValueError as error:
+            err_console.print(str(error))
+            raise typer.Exit(code=2) from error
+        except exceptions.TooManyError as error:
+            err_console.print(str(error))
+            raise typer.Exit(code=401) from error
 
 
 if __name__ == "__main__":

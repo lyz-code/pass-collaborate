@@ -2,6 +2,8 @@
 
 from pathlib import Path
 from typing import TYPE_CHECKING, List
+from pydantic import BaseModel
+from datetime import datetime
 
 from gnupg import GPG
 
@@ -10,6 +12,11 @@ from .exceptions import DecryptionError, EncryptionError, NotFoundError
 if TYPE_CHECKING:
     from .model.key import GPGKey
 
+class Key(BaseModel):
+    id_: str
+    name: str
+    email: str
+    expires: datetime
 
 class KeyStore:
     """Define the adapter of the `gpg` key store."""
@@ -106,3 +113,13 @@ class KeyStore:
     def private_key_fingerprints(self) -> List[str]:
         """Return the IDs of the private keys."""
         return [key["fingerprint"] for key in self.gpg.list_keys(True)]
+
+    @property
+    def public_key_fingerprints(self) -> List[Key]:
+        """Return the IDs of the private keys."""
+        for key in self.gpg.list_keys():
+            # https://gnupg.readthedocs.io/en/latest/#listing-keys
+            __import__('pdb').set_trace()
+            pass
+
+

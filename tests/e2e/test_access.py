@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 )
 def test_access_happy_path(
     runner: CliRunner,
-    auth: "AuthStore",
     pass_: "PassStore",
     developer: "User",
     identifier: str,
@@ -34,10 +33,9 @@ def test_access_happy_path(
     When: calling access command line
     Then: A tree is shown with only the elements it has access to
     """
-    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    auth.add_group(name="developers", users=[developer.email])
-    pass_.auth.reload()
-    pass_.authorize(identifier="developers", pass_dir_path="web")
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group(name="developers", users=[developer.email])
+    pass_.change_access(add_identifier="developers", pass_dir_path="web")
 
     result = runner.invoke(app, ["access", identifier])
 

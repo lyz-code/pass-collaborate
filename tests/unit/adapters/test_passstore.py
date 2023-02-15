@@ -84,11 +84,11 @@ def test_authorize_raises_error_if_file(pass_: "PassStore") -> None:
     with pytest.raises(
         ValueError,
         match=(
-            "Authorizing access to a file is not yet supported, "
+            "Changing access to a file is not yet supported, "
             "please use the parent directory."
         ),
     ):
-        pass_.authorize("bastion", "developer")
+        pass_.change_access("bastion", "developer")
 
 
 def test_key_id_returns_warning_if_no_key_is_valid(
@@ -124,3 +124,18 @@ def test_pass_has_access_to_directory(
 
     assert result["admin"]
     assert not result["developer"]
+
+
+def test_pass_has_access_group_is_not_equal_to_their_keys(
+        pass_: "PassStore", admin: 'User'
+) -> None:
+    """
+    Given: A configured PassStore and a path whose access is allowed for a gpg key
+    When: checking the access to that directory for a group that only has that gpg key
+    Then: return false as the user is allowed but not the group
+    """
+    pass_.auth.add_group(name="developers", users=[admin.email])
+
+    result = pass_.has_access('', 'developes')
+
+    assert not result

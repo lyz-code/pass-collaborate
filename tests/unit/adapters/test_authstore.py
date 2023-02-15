@@ -43,7 +43,7 @@ def test_get_group_raises_exception(auth: "AuthStore") -> None:
     When: get_group is called on a group that doesn't exist.
     Then: an exception is raised.
     """
-    with pytest.raises(NotFoundError, match="The group fight_club doesn't exist."):
+    with pytest.raises(NotFoundError, match="There is no group that matches fight_club."):
         auth.get_group("fight_club")
 
 

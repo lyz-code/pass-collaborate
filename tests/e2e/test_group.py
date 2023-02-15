@@ -91,7 +91,6 @@ def test_group_authorize_a_directory(
     runner: CliRunner,
     pass_: "PassStore",
     pass_dev: "PassStore",
-    auth: "AuthStore",
     entity: str,
     developer: User,
 ) -> None:
@@ -105,9 +104,9 @@ def test_group_authorize_a_directory(
     """
     gpg_id = Path(pass_.store_dir / "web" / ".gpg-id")
     assert not gpg_id.is_file()
-    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    auth.add_group(name="developers", users=["developer@example.org"])
-    pass_.auth.reload()
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group(name="developers", users=["developer@example.org"])
+    pytest.set_trace()
     # Check that the permissions are right
     for element in ["web", "database", "bastion"]:
         assert pass_.has_access(element)
@@ -119,7 +118,7 @@ def test_group_authorize_a_directory(
     result = runner.invoke(app, ["group", "authorize", entity, "web"])
 
     assert result.exit_code == 0
-    auth.reload()
+    pass_.auth.reload()
     assert pass_.has_access("web", identifier=developer.email)
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
@@ -146,7 +145,7 @@ def test_group_authorize_cant_authorize_file(runner: CliRunner) -> None:
     result = runner.invoke(app, ["group", "authorize", "user", "bastion"])
 
     assert result.exit_code == 2
-    assert "Authorizing access to a file is not yet supported" in result.stderr
+    assert "Changing access to a file is not yet supported" in result.stderr
 
 
 def test_group_authorize_cant_authorize_id_that_matches_two_elements(
@@ -238,7 +237,7 @@ def test_group_with_associated_passwords_add_users(
     pass_.auth.add_user(name=admin.name, email=admin.email, key=admin.key)
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     pass_.auth.add_group(name="developers", users=[admin.email])
-    pass_.authorize(identifier="developers", pass_dir_path="web")
+    pass_.change_access(add_identifiers=["developers"], pass_dir_path="web")
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert not pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
@@ -248,7 +247,6 @@ def test_group_with_associated_passwords_add_users(
     assert result.exit_code == 0
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
-        pytest.set_trace()
         assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
 
 
@@ -265,11 +263,10 @@ def test_group_remove_user_from_group(
     When: removing a user from the group
     Then: the removed user are not able to read the group passwords
     """
-    auth.add_user(name=admin.name, email=admin.email, key=admin.key)
-    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    auth.add_group(name="developers", users=[admin.email, developer.email])
-    pass_.auth.reload()
-    pass_.authorize(identifier="developers", pass_dir_path="web")
+    pass_.auth.add_user(name=admin.name, email=admin.email, key=admin.key)
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group(name="developers", users=[admin.email, developer.email])
+    pass_.change_access(add_identifiers=["developers"], pass_dir_path="web")
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
@@ -288,7 +285,6 @@ def test_group_remove_user_that_is_not_part_of_group(
     runner: CliRunner,
     developer: User,
     pass_: "PassStore",
-    auth: "AuthStore",
     caplog: LogCaptureFixture,
 ) -> None:
     """
@@ -297,9 +293,8 @@ def test_group_remove_user_that_is_not_part_of_group(
     Then: A warning is raised but the program exits fine
     """
     caplog.set_level(logging.INFO)
-    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    auth.add_group(name="developers", users=[])
-    pass_.auth.reload()
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group(name="developers", users=[])
 
     result = runner.invoke(
         app, ["group", "remove-users", developer.email, "developers"]

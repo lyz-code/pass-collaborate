@@ -5,7 +5,7 @@ import os
 import shutil
 from contextlib import suppress
 from pathlib import Path
-from typing import Annotated, Dict, List, Optional
+from typing import Annotated, Dict, List, Optional, Union
 
 from goodconf import GoodConf
 from pydantic import BaseModel, EmailStr, Field  # noqa: E0611
@@ -40,7 +40,7 @@ class Group(BaseModel):
         for user in users:
             log.info(f"Removing user {user.name} from group {self.name}")
             try:
-                self.users.remove(user.name)
+                self.users.remove(user.email)
             except ValueError:
                 log.info(f"User {user.name} is not part of the {self.name} group")
 
@@ -134,14 +134,29 @@ class AuthStore(GoodConf):
         """Return the path to the config file."""
         return str(self._config_file)
 
+    @property
+    def store_dir(self) -> Path:
+        """Return the path to the store directory."""
+        return Path(self.config_file).parent
+
     def reload(self) -> None:
         """Reload the contents of the authentication store."""
         self.load(self.config_file)
 
     def load(self, filename: Optional[str] = None) -> None:
         """Load a configuration file."""
-        self._config_file = filename
         super().load(filename)
+        self._config_file = filename
+        self._load_gpg_id_files()
+
+    def _load_gpg_id_files(self) -> None:
+        """Load the data of the gpg-id files that is not already in the access store."""
+        for gpg_id in Path(self.config_file).parent.rglob(".gpg-id"):
+            try:
+               self.access[str(gpg_id)]
+            except KeyError:
+               self.access[str(gpg_id)] = gpg_id.read_text().splitlines()
+
 
     def save(self) -> None:
         """Save the contents of the authentication store."""
@@ -151,11 +166,20 @@ class AuthStore(GoodConf):
             yaml.dump(self.dict(), file_cursor)
 
     def get_group(self, name: str) -> Group:
-        """Return the group that matches the group name."""
-        try:
-            return [group for group in self.groups if group.name == name][0]
-        except IndexError as error:
-            raise NotFoundError(f"The group {name} doesn't exist.") from error
+        """Return the group that matches the group name.
+
+        Raises:
+            NotFoundError: if no group matches the identifier
+        """
+        group_match = [group for group in self.groups if group.name == name]
+
+        if len(group_match) == 0:
+            raise NotFoundError(f"There is no group that matches {name}.")
+        if len(group_match) == 1:
+            return group_match[0]
+        raise TooManyError(
+            f"More than one group matched the selected criteria {name}."
+        )
 
     def get_user(self, identifier: Identifier) -> User:
         """Return the user that matches the user identifier.
@@ -163,6 +187,10 @@ class AuthStore(GoodConf):
         Args:
             identifier: string that identifies the user. It can be either the name,
                 the email or the gpg key.
+
+        Raises:
+            NotFoundError: if no user matches the identifier
+            TooManyError: if more than one user matches the identifier
         """
         user_match = [
             user
@@ -176,6 +204,27 @@ class AuthStore(GoodConf):
             return user_match[0]
         raise TooManyError(
             f"More than one user matched the selected criteria {identifier}."
+        )
+
+    def get_identifier(self, identifier: Identifier) -> Union[Group, User]:
+        """Return the group or user that matches the identifier."""
+        # users
+        user = None
+        with suppress(NotFoundError, TooManyError):
+            user = self.get_user(identifier)
+
+        # new groups
+        with suppress(NotFoundError, TooManyError):
+            group = self.get_group(identifier)
+            if user:
+                raise ValueError(
+                    f"Both user {user.name} and group {group.name} matched identifier {identifier}, cancelling authorization."
+                )
+            return group
+        if user:
+            return user
+        raise NotFoundError(
+            f"No user or group (or more than one) matches identifier {identifier}"
         )
 
     def find_keys(self, identifier: Identifier) -> List["GPGKey"]:
@@ -228,57 +277,95 @@ class AuthStore(GoodConf):
 
         self.save()
 
-    def authorize(
+    def change_access(
         self,
         gpg_id: GPGIDPath,
-        identifier: Identifier,
+        add_identifiers: Optional[List[Identifier]] = None,
+        remove_identifiers: Optional[List[Identifier]] = None,
     ) -> None:
-        """Authorize a group or person to a directory of the password store.
+        """Authorize or revoke a group or person to a directory of the password store.
 
-        It will tweak the `.gpg-id` file to specify the desired access and it
-        will reencrypt the files of that directory.
+        It will store the access information in the auth store.
 
         Args:
             pass_dir_path: internal path of a directory of the password store.
                 Not a real Path
-            identifier: Unique identifier of a group or person.
+            add_identifiers: Unique identifiers of groups or people to authorize.
                 It can be the group name, person name, email or gpg key. Can be
                 used in addition to `keys`.
-
-        Raises:
-            ValueError: When trying to authorize a file.
-                If we authorize a file with keys different than the ones
-                specified on the .gpg-id file, the next time someone reencrypts
-                the file using `pass` directly, the change will be overwritten.
-                We could handle this case, but not for the MVP.
-
+            remove_identifiers: Unique identifiers of groups or people to revoke.
+                It can be the group name, person name, email or gpg key. Can be
+                used in addition to `keys`.
         """
+        add_identifiers = add_identifiers or []
+        remove_identifiers = remove_identifiers or []
+
         try:
             access = self.access[gpg_id]
         except KeyError:
-            access = []
+            # If the access doesn't exist it will take it's parent as a base
+            access = self.access[str(self._gpg_id_file(Path(gpg_id).parent))].copy()
 
-        # new users
-        with suppress(NotFoundError, TooManyError):
-            user = self.get_user(identifier)
-            new_access = user.name
-            if new_access not in access:
-                log.info(f'  Authorizing access to user {user.name}: {user.email} ({user.key})')
-                access.append(new_access)
+        # Authorize new access
+        for identifier in add_identifiers:
+            new_access = self.get_identifier(identifier)
 
-        # new groups
-        with suppress(NotFoundError):
-            group = self.get_group(identifier)
-            if user:
-                raise ValueError(
-                    f'Both user {user.name} and group {group.name} matched identifier {identifier}, cancelling authorization.'
+            if isinstance(new_access, User):
+                log.info(
+                    f"  Authorizing access to user {new_access.name}: "
+                    f"{new_access.email} ({new_access.key})"
                 )
-            new_access = group.name
-            if new_access not in access:
-                log.info(f'  Authorizing access to group {group.name}')
-                access.append(new_access)
+            else:
+                log.info(f"  Authorizing access to group {new_access.name}")
+
+            access.append(new_access.name)
+
+        # Revoke existing access
+        for identifier in remove_identifiers:
+            revoke = self.get_identifier(identifier)
+
+            if isinstance(revoke, User):
+                log.info(
+                    f"  Revoking access to user {revoke.name}: "
+                    f"{revoke.email} ({revoke.key})"
+                )
+            else:
+                log.info(f"  Revoking access to group {revoke.name}")
+
+            # We may pass here when we remove the access of a user to a group, therefore the
+            # access to the directory doesn't change as it's binded to the group
+            with suppress(ValueError):
+                access.remove(revoke.name)
 
         self.access[gpg_id] = access
+
+        self.save()
+
+    def has_access(
+        self, path: Path, identifier: "Identifier"
+    ) -> bool:
+        """Check in the stored access if the identdifier is allowed to the gpg_id file.
+
+        Args:
+            path: A real path to an element of the pass store.
+            identifier: user or group identifier
+        """
+        authoree = self.get_identifier(identifier)
+        access = self.access[str(self._gpg_id_file(path))]
+
+        if isinstance(authoree, Group):
+            return authoree.name in access
+        else:
+            __import__('pdb').set_trace()
+            for id_ in access:
+                authorized = self.get_identifier(id_)
+                if authorized == authoree:
+                    return True
+                if isinstance(authorized, Group):
+                    for user_id in authorized.users:
+                        if self.get_user(user_id) == authoree:
+                            return True
+            return False
         
 
     def allowed_keys(
@@ -288,7 +375,7 @@ class AuthStore(GoodConf):
         """Return the allowed gpg keys of a gpg-id path.
 
         Args:
-            path: A real path to an element of the pass store.
+            gpg_id: path to a .gpg_id file
 
         Raises:
             NotFoundError: If there is no data of that gpg-id file.
@@ -302,6 +389,32 @@ class AuthStore(GoodConf):
 
         keys = []
         for authoree in authorees:
-            keys.extend(self.find_keys(authoree))
+            if len(authoree) == 40:
+                # authoree is a gpg_id key
+                keys.append(authoree)
+            else:
+                keys.extend(self.find_keys(authoree))
 
         return keys
+
+    def _gpg_id_file(self, path: Union[Path,str]) -> Path:
+        """Return the first .gpg-id file that applies to a path.
+
+        Args:
+            path: A real path to an element of the pass store.
+        """
+        if isinstance(path, str):
+            path = Path(path)
+
+        if path.match('*.gpg-id'):
+            return path
+
+        gpg_id_path = path / ".gpg-id"
+
+        if gpg_id_path.is_file():
+            return gpg_id_path
+
+        if path == self.store_dir:
+            raise NotFoundError("Couldn't find the root .gpg-id of your store")
+
+        return self._gpg_id_file(path.parent)
