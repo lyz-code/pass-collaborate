@@ -106,7 +106,6 @@ def test_group_authorize_a_directory(
     assert not gpg_id.is_file()
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     pass_.auth.add_group(name="developers", users=["developer@example.org"])
-    pytest.set_trace()
     # Check that the permissions are right
     for element in ["web", "database", "bastion"]:
         assert pass_.has_access(element)
@@ -146,27 +145,6 @@ def test_group_authorize_cant_authorize_file(runner: CliRunner) -> None:
 
     assert result.exit_code == 2
     assert "Changing access to a file is not yet supported" in result.stderr
-
-
-def test_group_authorize_cant_authorize_id_that_matches_two_elements(
-    runner: CliRunner,
-    auth: "AuthStore",
-    developer: User,
-    attacker: User,
-) -> None:
-    """
-    Given: A configured environment with two users with the same name
-    When: Trying to authorize a directory with the email which is shared by two users
-    Then: An error is raised as we don't know which user has to be authorized
-    """
-    runner.mix_stderr = False
-    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    auth.add_user(name=attacker.name, email=developer.email, key=attacker.key)
-
-    result = runner.invoke(app, ["group", "authorize", developer.email, "web"])
-
-    assert result.exit_code == 401
-    assert "More than one user matched the selected criteria" in result.stderr
 
 
 @pytest.mark.skip("Not yet}")
@@ -219,7 +197,7 @@ def test_group_add_users(
     if "developer@example.org" in arguments:
         assert "Marie" in saved_group.users
     if "admin@example.org" in arguments:
-        assert "Admin" in saved_group.users
+        assert "admin" in saved_group.users
 
 
 def test_group_with_associated_passwords_add_users(
@@ -234,7 +212,6 @@ def test_group_with_associated_passwords_add_users(
     When: adding users to a group
     Then: the new users are able to read the group passwords
     """
-    pass_.auth.add_user(name=admin.name, email=admin.email, key=admin.key)
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     pass_.auth.add_group(name="developers", users=[admin.email])
     pass_.change_access(add_identifiers=["developers"], pass_dir_path="web")
@@ -263,7 +240,6 @@ def test_group_remove_user_from_group(
     When: removing a user from the group
     Then: the removed user are not able to read the group passwords
     """
-    pass_.auth.add_user(name=admin.name, email=admin.email, key=admin.key)
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     pass_.auth.add_group(name="developers", users=[admin.email, developer.email])
     pass_.change_access(add_identifiers=["developers"], pass_dir_path="web")

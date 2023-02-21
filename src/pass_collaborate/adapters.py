@@ -1,22 +1,25 @@
 """Define the adapters of the key stores."""
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, List
-from pydantic import BaseModel
-from datetime import datetime
 
 from gnupg import GPG
+from pydantic import BaseModel
 
 from .exceptions import DecryptionError, EncryptionError, NotFoundError
 
 if TYPE_CHECKING:
     from .model.key import GPGKey
 
+
 class Key(BaseModel):
+    """Model the relevant data of a GPG key."""
+
     id_: str
     name: str
     email: str
-    expires: datetime
+
 
 class KeyStore:
     """Define the adapter of the `gpg` key store."""
@@ -116,10 +119,23 @@ class KeyStore:
 
     @property
     def public_key_fingerprints(self) -> List[Key]:
-        """Return the IDs of the private keys."""
+        """Return the IDs of the public keys.
+
+        It will only use the first id that it finds.
+        """
+        keys = []
         for key in self.gpg.list_keys():
-            # https://gnupg.readthedocs.io/en/latest/#listing-keys
-            __import__('pdb').set_trace()
-            pass
+            match = re.match(r"(?P<name>.*) <(?P<email>.*)>", key["uids"][0])
+            if match is None:
+                raise ValueError(
+                    "Could not extract the name or email from the gpg key information"
+                )
+            keys.append(
+                Key(
+                    id_=key["fingerprint"],
+                    name=match["name"],
+                    email=match["email"],
+                )
+            )
 
-
+        return keys

@@ -53,20 +53,32 @@ class PassStore(BaseModel):
         auth.load(str(auth_file))
         values["auth"] = auth
 
-        cls._load_missing_users_from_keystore(key, auth)
+        cls._load_missing_users_from_keystore(values["store_dir"], key, auth)
 
         return values
 
     @classmethod
-    def _load_missing_users_from_keystore(cls, keystore: KeyStore, auth: AuthStore):
+    def _load_missing_users_from_keystore(
+        cls, store_dir: Path, keystore: KeyStore, auth: AuthStore
+    ) -> None:
         """Load the missing user information from the keystore."""
-        __import__('pdb').set_trace()
-        for key in cls.all_keys:
+        for key in cls.all_keys(store_dir):
             try:
                 auth.get_user(key)
-            except NotFoundError:
-                keystore
-
+            except NotFoundError as error:
+                for stored_key in keystore.public_key_fingerprints:
+                    if key == stored_key.id_:
+                        auth.add_user(
+                            name=stored_key.name,
+                            key=stored_key.id_,
+                            email=stored_key.email,
+                        )
+                        break
+                else:
+                    raise NotFoundError(
+                        f"Please import the gpg key {key} in your gpg keystore"
+                    ) from error
+        auth.save()
 
     def path(
         self, pass_path: Optional[str] = None, is_dir: Optional[bool] = None
@@ -130,7 +142,7 @@ class PassStore(BaseModel):
                 keys = self.key.list_recipients(path)
             else:
                 if path.is_dir():
-                    gpg_id = self.auth._gpg_id_file(path)
+                    gpg_id = self.auth.gpg_id_file(path)
                 elif path.match("*.gpg-id"):
                     gpg_id = path
                 else:
@@ -176,9 +188,10 @@ class PassStore(BaseModel):
         # Re-encrypt all the password files
         for path in self._pass_paths(pass_dir_path):
             log.info(f"Reencrypting file {self._pass_path(path)}")
-            # As we're changing the access keys to a file, we can't use self.allowed_keys directly
-            # on the file as it will only report the keys that can now access the file.
-            allowed_keys = self.allowed_keys(path=self.auth._gpg_id_file(path))
+            # As we're changing the access keys to a file, we can't use
+            # self.allowed_keys directly on the file as it will only report the
+            # keys that can now access the file.
+            allowed_keys = self.allowed_keys(path=self.auth.gpg_id_file(path))
             self.key.encrypt(path, allowed_keys)
 
     def find_keys(self, identifier: "Identifier") -> List[GPGKey]:
@@ -198,14 +211,13 @@ class PassStore(BaseModel):
         """Update the GPG keys of a .gpg-id file to match the auth store access.
 
         Args:
-            pass_dir_path: internal path of a directory of the password store.
-                Not a real Path
+            gpg_id: path to a password store .gpg-id file
         """
         keys = []
         gpg_id_file = Path(gpg_id)
         log.info(f"Updating the keys stored in {gpg_id}")
         keys.extend(self.allowed_keys(gpg_id_file))
-        gpg_id_file.write_text("\n".join(set(keys)))
+        gpg_id_file.write_text("\n".join(set(keys)), encoding="utf-8")
 
     def can_decrypt(self, path: Path) -> bool:
         """Test if the user can decrypt a file.
@@ -249,12 +261,12 @@ class PassStore(BaseModel):
             f"in the repository. Matching keys are: {matching_keys}"
         )
 
-    @classmethod
-    def all_keys(cls) -> List[str]:
+    @staticmethod
+    def all_keys(store_dir: Path) -> List[str]:
         """Return all the gpg keys used by the password store."""
         keys = []
 
-        for gpg_id in cls.store_dir.rglob(".gpg-id"):
+        for gpg_id in store_dir.rglob(".gpg-id"):
             keys.extend(gpg_id.read_text().splitlines())
 
         return list(set(keys))
@@ -319,7 +331,11 @@ class PassStore(BaseModel):
         for gpg_id in self.store_dir.rglob(".gpg-id"):
             pass_path = self._pass_path(gpg_id.parent)
             if self.has_access(pass_path, group_name):
-                self.change_access(pass_dir_path=pass_path, add_identifiers=add_identifiers, remove_identifiers=remove_identifiers)
+                self.change_access(
+                    pass_dir_path=pass_path,
+                    add_identifiers=add_identifiers,
+                    remove_identifiers=remove_identifiers,
+                )
 
     def access(self, identifier: "Identifier") -> List[str]:
         """Get a list of passwords the entity identified by identifier has access to.
@@ -352,7 +368,7 @@ class PassStore(BaseModel):
         If identifier is not None, it will check if the entity represented by
         the identified has access to the element in the store.
 
-        * If it's a group it will check if all the gpg keys are allowed and the group is 
+        * If it's a group it will check if all the gpg keys are allowed and the group is
             allowed in the auth store.
         * If it's a user it will check if it's gpg key is allowed.
 
@@ -386,7 +402,6 @@ class PassStore(BaseModel):
             return self.auth.has_access(path, identifier)
 
         return True
-
 
     def change_access(
         self,
@@ -433,4 +448,3 @@ class PassStore(BaseModel):
         )
         self.update_gpg_id_file(gpg_id)
         self.reencrypt_directory(pass_dir_path)
-

@@ -4,8 +4,10 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from rich.console import Console
 
 from .. import views
+from ..exceptions import NotFoundError
 from ..model.pass_ import PassStore
 from ..version import version_info
 from . import group, load_logger, user
@@ -40,7 +42,12 @@ def main(
     """A pass extension that helps collectives manage the access to their passwords."""
     ctx.ensure_object(dict)
     load_logger(verbose)
-    ctx.obj["pass"] = PassStore(store_dir=pass_dir, key_dir=key_dir)
+    try:
+        ctx.obj["pass"] = PassStore(store_dir=pass_dir, key_dir=key_dir)
+    except NotFoundError as error:
+        err_console = Console(stderr=True)
+        err_console.print(str(error))
+        raise typer.Exit(code=404) from error
 
 
 @app.command()

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List
 
 import pytest
 
-from pass_collaborate.exceptions import NotFoundError, TooManyError
+from pass_collaborate.exceptions import NotFoundError
 from pass_collaborate.model.auth import Group
 
 from ...factories import GroupFactory, UserFactory
@@ -43,7 +43,9 @@ def test_get_group_raises_exception(auth: "AuthStore") -> None:
     When: get_group is called on a group that doesn't exist.
     Then: an exception is raised.
     """
-    with pytest.raises(NotFoundError, match="There is no group that matches fight_club."):
+    with pytest.raises(
+        NotFoundError, match="There is no group that matches fight_club."
+    ):
         auth.get_group("fight_club")
 
 
@@ -56,8 +58,26 @@ def test_raises_exception_if_user_exists(auth: "AuthStore") -> None:
     user = UserFactory.build()
     auth.add_user(user.name, user.key, user.email)
 
-    with pytest.raises(ValueError, match=f"The user {user.name} already exists."):
+    with pytest.raises(
+        ValueError, match=f"The user {user.name} is using the name {user.name}."
+    ):
         auth.add_user(user.name, user.key, user.email)
+
+
+def test_raises_exception_if_a_user_with_same_email_exists(auth: "AuthStore") -> None:
+    """
+    Given: an auth store
+    When: creating a user using an email that is already selected for other user
+    Then: an exception is raised.
+    """
+    user = UserFactory.build()
+    user2 = UserFactory.build(email=user.email)
+    auth.add_user(user.name, user.key, user.email)
+
+    with pytest.raises(
+        ValueError, match=f"The user {user.name} is using the email {user.email}."
+    ):
+        auth.add_user(user2.name, user2.key, user2.email)
 
 
 @pytest.mark.parametrize(
@@ -81,30 +101,6 @@ def test_get_user_happy_path(
     result = auth.get_user(identifier)
 
     assert result == developer
-
-
-@pytest.mark.parametrize(
-    "identifier",
-    [
-        "developer@example.org",
-        "8DFE8782CD025ED6220D305115575911602DDD94",
-    ],
-)
-def test_get_user_raises_exception_if_more_than_one(
-    auth: "AuthStore", developer: "User", identifier: str
-) -> None:
-    """
-    Given: A valid user introduced twice
-    When: getting by the email, key or name.
-    Then: As more than one user matches, raise an exception.
-    """
-    auth.add_user(developer.name, developer.key, developer.email)
-    auth.add_user("Other name", developer.key, developer.email)
-
-    with pytest.raises(
-        TooManyError, match="More than one user matched the selected criteria"
-    ):
-        auth.get_user(identifier)
 
 
 @pytest.mark.parametrize(

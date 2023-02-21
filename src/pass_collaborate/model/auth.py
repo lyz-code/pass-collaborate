@@ -81,7 +81,7 @@ class AuthStore(GoodConf):
 
         return auth_file
 
-    def add_user(self, name: str, key: str, email: Optional[str] = None) -> User:
+    def add_user(self, name: str, key: str, email: str) -> User:
         """Create a new user.
 
         Args:
@@ -92,8 +92,13 @@ class AuthStore(GoodConf):
         Raises:
             ValueError: if the user already exists
         """
-        if name in self.user_names:
-            raise ValueError(f"The user {name} already exists.")
+        for id_, value in [("name", name), ("key", key), ("email", email)]:
+            with suppress(NotFoundError):
+                user = self.get_user(value)
+                if user:
+                    raise ValueError(
+                        f"The user {user.name} is using the {id_} {value}."
+                    )
 
         new_user = User(name=name, key=key, email=EmailStr(email))
         self.users.append(new_user)
@@ -153,10 +158,9 @@ class AuthStore(GoodConf):
         """Load the data of the gpg-id files that is not already in the access store."""
         for gpg_id in Path(self.config_file).parent.rglob(".gpg-id"):
             try:
-               self.access[str(gpg_id)]
+                self.access[str(gpg_id)]
             except KeyError:
-               self.access[str(gpg_id)] = gpg_id.read_text().splitlines()
-
+                self.access[str(gpg_id)] = gpg_id.read_text().splitlines()
 
     def save(self) -> None:
         """Save the contents of the authentication store."""
@@ -177,9 +181,7 @@ class AuthStore(GoodConf):
             raise NotFoundError(f"There is no group that matches {name}.")
         if len(group_match) == 1:
             return group_match[0]
-        raise TooManyError(
-            f"More than one group matched the selected criteria {name}."
-        )
+        raise TooManyError(f"More than one group matched the selected criteria {name}.")
 
     def get_user(self, identifier: Identifier) -> User:
         """Return the user that matches the user identifier.
@@ -207,18 +209,29 @@ class AuthStore(GoodConf):
         )
 
     def get_identifier(self, identifier: Identifier) -> Union[Group, User]:
-        """Return the group or user that matches the identifier."""
+        """Return the group or user that matches the identifier.
+
+        Args:
+            identifier: string that identifies the user or group. It can be
+                either the name, the email or the gpg key.
+
+        Raises:
+            NotFoundError: if no user or group matches the identifier
+            TooManyError: if more than one user or group matches the identifier
+        """
         # users
         user = None
-        with suppress(NotFoundError, TooManyError):
+        with suppress(NotFoundError):
             user = self.get_user(identifier)
 
         # new groups
-        with suppress(NotFoundError, TooManyError):
+        with suppress(NotFoundError):
             group = self.get_group(identifier)
             if user:
-                raise ValueError(
-                    f"Both user {user.name} and group {group.name} matched identifier {identifier}, cancelling authorization."
+                raise TooManyError(
+                    f"Both user {user.name} and group {group.name} "
+                    f"matched identifier {identifier}, "
+                    "cancelling authorization."
                 )
             return group
         if user:
@@ -288,8 +301,7 @@ class AuthStore(GoodConf):
         It will store the access information in the auth store.
 
         Args:
-            pass_dir_path: internal path of a directory of the password store.
-                Not a real Path
+            gpg_id: path to a passwordstore .gpg-id file
             add_identifiers: Unique identifiers of groups or people to authorize.
                 It can be the group name, person name, email or gpg key. Can be
                 used in addition to `keys`.
@@ -304,7 +316,7 @@ class AuthStore(GoodConf):
             access = self.access[gpg_id]
         except KeyError:
             # If the access doesn't exist it will take it's parent as a base
-            access = self.access[str(self._gpg_id_file(Path(gpg_id).parent))].copy()
+            access = self.access[str(self.gpg_id_file(Path(gpg_id).parent))].copy()
 
         # Authorize new access
         for identifier in add_identifiers:
@@ -332,8 +344,9 @@ class AuthStore(GoodConf):
             else:
                 log.info(f"  Revoking access to group {revoke.name}")
 
-            # We may pass here when we remove the access of a user to a group, therefore the
-            # access to the directory doesn't change as it's binded to the group
+            # We may pass here when we remove the access of a user to a group,
+            # therefore the access to the directory doesn't change as it's
+            # binded to the group
             with suppress(ValueError):
                 access.remove(revoke.name)
 
@@ -341,9 +354,7 @@ class AuthStore(GoodConf):
 
         self.save()
 
-    def has_access(
-        self, path: Path, identifier: "Identifier"
-    ) -> bool:
+    def has_access(self, path: Path, identifier: "Identifier") -> bool:
         """Check in the stored access if the identdifier is allowed to the gpg_id file.
 
         Args:
@@ -351,22 +362,20 @@ class AuthStore(GoodConf):
             identifier: user or group identifier
         """
         authoree = self.get_identifier(identifier)
-        access = self.access[str(self._gpg_id_file(path))]
+        access = self.access[str(self.gpg_id_file(path))]
 
         if isinstance(authoree, Group):
             return authoree.name in access
-        else:
-            __import__('pdb').set_trace()
-            for id_ in access:
-                authorized = self.get_identifier(id_)
-                if authorized == authoree:
-                    return True
-                if isinstance(authorized, Group):
-                    for user_id in authorized.users:
-                        if self.get_user(user_id) == authoree:
-                            return True
-            return False
-        
+
+        for id_ in access:
+            authorized = self.get_identifier(id_)
+            if authorized == authoree:
+                return True
+            if isinstance(authorized, Group):
+                for user_id in authorized.users:
+                    if self.get_user(user_id) == authoree:
+                        return True
+        return False
 
     def allowed_keys(
         self,
@@ -385,7 +394,7 @@ class AuthStore(GoodConf):
         except KeyError as error:
             raise NotFoundError(
                 f"There is no access information for the gpg-id file {gpg_id}"
-            )
+            ) from error
 
         keys = []
         for authoree in authorees:
@@ -397,7 +406,7 @@ class AuthStore(GoodConf):
 
         return keys
 
-    def _gpg_id_file(self, path: Union[Path,str]) -> Path:
+    def gpg_id_file(self, path: Union[Path, str]) -> Path:
         """Return the first .gpg-id file that applies to a path.
 
         Args:
@@ -406,7 +415,7 @@ class AuthStore(GoodConf):
         if isinstance(path, str):
             path = Path(path)
 
-        if path.match('*.gpg-id'):
+        if path.match("*.gpg-id"):
             return path
 
         gpg_id_path = path / ".gpg-id"
@@ -417,4 +426,4 @@ class AuthStore(GoodConf):
         if path == self.store_dir:
             raise NotFoundError("Couldn't find the root .gpg-id of your store")
 
-        return self._gpg_id_file(path.parent)
+        return self.gpg_id_file(path.parent)

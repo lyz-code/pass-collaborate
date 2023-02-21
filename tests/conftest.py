@@ -49,7 +49,7 @@ def pass_attacker_(work_dir: Path) -> PassStore:
 def admin_() -> User:
     """Create the admin user."""
     return User(
-        name="Admin",
+        name="admin",
         email=EmailStr("admin@example.org"),
         key="5E435D54DDC11A0F303910AEDECE5B3C889F13DE",
     )

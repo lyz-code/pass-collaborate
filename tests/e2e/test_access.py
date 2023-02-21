@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 from pass_collaborate.entrypoints.cli import app
 
 if TYPE_CHECKING:
-    from pass_collaborate.model.auth import AuthStore, User
+    from pass_collaborate.model.auth import User
     from pass_collaborate.model.pass_ import PassStore
 
 
@@ -35,7 +35,7 @@ def test_access_happy_path(
     """
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     pass_.auth.add_group(name="developers", users=[developer.email])
-    pass_.change_access(add_identifier="developers", pass_dir_path="web")
+    pass_.change_access(add_identifiers=["developers"], pass_dir_path="web")
 
     result = runner.invoke(app, ["access", identifier])
 

@@ -1,15 +1,14 @@
 """Test the implementation of the PassStore."""
 
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from _pytest.logging import LogCaptureFixture
 
 from pass_collaborate.exceptions import NotFoundError
 
 if TYPE_CHECKING:
+    from pass_collaborate.model.auth import User
     from pass_collaborate.model.pass_ import PassStore
 
 
@@ -88,25 +87,7 @@ def test_authorize_raises_error_if_file(pass_: "PassStore") -> None:
             "please use the parent directory."
         ),
     ):
-        pass_.change_access("bastion", "developer")
-
-
-def test_key_id_returns_warning_if_no_key_is_valid(
-    pass_attacker: "PassStore", caplog: LogCaptureFixture
-) -> None:
-    """
-    Given: A configured PassStore with the key of a user that should not have access
-    When: Trying to get the key id that works for the password store
-    Then: A warning is raised.
-    """
-    # W0104 Statement seems to have no effect but it does
-    pass_attacker.key_id  # act
-
-    assert (
-        "pass_collaborate.model.pass_",
-        logging.WARNING,
-        "The user gpg key was not found between the allowed keys in the password store",
-    ) in caplog.record_tuples
+        pass_.change_access("bastion", ["developer"])
 
 
 def test_pass_has_access_to_directory(
@@ -127,7 +108,7 @@ def test_pass_has_access_to_directory(
 
 
 def test_pass_has_access_group_is_not_equal_to_their_keys(
-        pass_: "PassStore", admin: 'User'
+    pass_: "PassStore", admin: "User"
 ) -> None:
     """
     Given: A configured PassStore and a path whose access is allowed for a gpg key
@@ -136,6 +117,6 @@ def test_pass_has_access_group_is_not_equal_to_their_keys(
     """
     pass_.auth.add_group(name="developers", users=[admin.email])
 
-    result = pass_.has_access('', 'developes')
+    result = pass_.has_access("", "developers")
 
     assert not result
