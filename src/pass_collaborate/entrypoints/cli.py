@@ -61,7 +61,7 @@ def access(
         ),
     ),
 ) -> None:
-    """Add a new group."""
+    """Check what passwords does the user or group have access to."""
     pass_ = ctx.obj["pass"]
     paths = pass_.access(identifier)
     views.print_access(label=identifier, paths=paths)

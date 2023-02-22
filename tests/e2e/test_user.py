@@ -1,5 +1,6 @@
 """Test the implementation of the user command line command."""
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -107,3 +108,32 @@ def test_user_add_saves_public_key_in_the_public_key_store(
     result = False
 
     assert result
+
+
+def test_user_list(runner: CliRunner) -> None:
+    """
+    Given: A configured environment
+    When: calling user list command
+    Then: The users are listed
+    """
+    result = runner.invoke(app, ["user", "list"])
+
+    assert result.exit_code == 0
+    assert "admin" in result.stdout
+
+
+def test_user_show(runner: CliRunner, admin: "User") -> None:
+    """
+    Given: A configured environment
+    When: calling user show command
+    Then: The user information is shown
+    """
+    result = runner.invoke(app, ["user", "show", admin.name])
+
+    assert result.exit_code == 0
+    for regexp in [
+        rf"Name *{admin.name}",
+        rf"Email *{admin.email}",
+        rf"Key *{admin.key}",
+    ]:
+        assert re.search(regexp, result.stdout)

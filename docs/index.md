@@ -4,15 +4,105 @@
 
 A `pass` extension that helps collectives manage the access to their passwords.
 
-It grants the authorisation concepts of user and group to `pass`.
+It allows you to choose which users or groups have access to the different parts of your password store in a more pleasant way than editing the `.gpg-id` files manually by making easy to:
 
-T
+* Create new users and groups.
+* Granting or removing permissions of users or groups to parts of your store.
+* Checking which passwords does a user or group have access to.
 
 # Installing
 
 ```bash
 pip install pass-collaborate
 ```
+
+# Usage
+
+## User management
+
+To add a new user you can run:
+
+```bash
+pass user add user_identifier
+```
+
+Where `user_identifier` can be it's name, email or GPG key. `pass_collaborate` will check your GPG keystore for keys that match that identifier and will fill the required data.
+
+If you don't like the `name` or `email` defined in the GPG key, you can override the stored values with the `--name` and `--email` flags, for example:
+
+```bash
+pass user add lyz@riseup.net --name Lyz
+```
+
+You may not need to create the users though, `pass_collaborate` tries to create them for you on the first run. You can check the existing users with `pass user list`.
+
+## Group management
+
+It's more convenient to manage authorisation permissions for a group of users. To create one use:
+
+```bash
+pass group add group_name user1 user2
+```
+
+Where:
+
+* `group_name`: is a unique group name.
+* `user1`, `user2`, ...: are user identifiers of already available users. It can be their names, emails or gpg keys.
+
+Once a group is created, you can add new users with:
+
+```bash
+pass group add-users user3 user4 group_name
+```
+
+Or remove them with:
+
+```bash
+pass group remove-users user3 user4 group_name
+```
+
+Every time you change the users of a group, `pass_collaborate` will reencrypt the passwords associated to that group with the new user list.
+
+To list the available groups run:
+
+```bash
+pass group list
+```
+
+And to get the information of a group use:
+
+```bash
+pass group show group_name
+```
+
+## Authorisation 
+
+To grant access to a group to the directories of your password store you can use:
+
+```bash
+pass group authorize group_name pass/path/1 pass/path/2
+```
+
+`pass_collaborate` will take into account the permissions defined in the `.gpg-id` files before you started using it.
+
+## Check access
+
+As your password store begins to grow or you start refining the permissions of the different groups and users it may be easy to get lost on who has access to what. You can check what passwords does a group or user have access with:
+
+```bash
+pass access identifier
+```
+
+Where `identifier` can be a user name, email, gpg key or group name.
+
+# How does it work
+
+`pass_collaborate` interacts with your password store to make the required changes in order to fulfill the desired task. To be able to do it it uses the information of:
+
+* Your GPG key store.
+* The information stored in your `pass` store (password files and `.gpg-id` files).
+
+To store the data that is not available in the above storages, `pass_collaborate` uses an `.auth.yaml` file.
 
 # References
 

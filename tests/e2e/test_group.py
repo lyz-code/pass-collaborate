@@ -147,18 +147,6 @@ def test_group_authorize_cant_authorize_file(runner: CliRunner) -> None:
     assert "Changing access to a file is not yet supported" in result.stderr
 
 
-@pytest.mark.skip("Not yet}")
-def test_group_authorize_asks_for_confirmation_by_default() -> None:
-    """
-    Given:
-    When:
-    Then:
-    """
-    result = False
-
-    assert result
-
-
 @pytest.mark.parametrize(
     "arguments",
     [

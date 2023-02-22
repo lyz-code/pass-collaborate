@@ -5,6 +5,7 @@ from typing import Optional
 import typer
 from rich.console import Console
 
+from .. import views
 from ..exceptions import NotFoundError
 
 app = typer.Typer()
@@ -30,3 +31,23 @@ def add(
     if email:
         key.email = email
     pass_.auth.add_user(name=key.name, key=key.id_, email=key.email)
+
+
+@app.command(name="list")
+def list_(ctx: typer.Context) -> None:
+    """List existing users."""
+    auth = ctx.obj["pass"].auth
+    print("\n".join([user.name for user in auth.users]))
+
+
+@app.command()
+def show(
+    ctx: typer.Context,
+    identifier: str = typer.Argument(
+        ..., help="It can be either the name, the email or the gpg key."
+    ),
+) -> None:
+    """Print the information of a user."""
+    auth = ctx.obj["pass"].auth
+    user = auth.get_user(identifier)
+    views.print_model(user)
