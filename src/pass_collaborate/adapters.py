@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, List
 from gnupg import GPG
 from pydantic import BaseModel
 
-from .exceptions import DecryptionError, EncryptionError, NotFoundError
+from .exceptions import DecryptionError, EncryptionError, NotFoundError, TooManyError
 
 if TYPE_CHECKING:
     from .model.key import GPGKey
@@ -19,6 +19,16 @@ class Key(BaseModel):
     id_: str
     name: str
     email: str
+
+    def match(self, identifier: str) -> bool:
+        """Check if the identifier matches the current key.
+
+        It will check the string against the different key properties.
+        """
+        return any(
+            getattr(self, attribute) == identifier
+            for attribute in ["id_", "name", "email"]
+        )
 
 
 class KeyStore:
@@ -139,3 +149,24 @@ class KeyStore:
             )
 
         return keys
+
+    def find_key(self, identifier: str) -> Key:
+        """Return the key that matches the identifier.
+
+        Args:
+            identifier: GPG key name, email or fingerprint
+
+        Raises:
+            NotFoundError: If the identifier doesn't match any available public keys.
+            TooManyError: If more than one available public key match the identifier.
+        """
+        keys = []
+        for key in self.public_key_fingerprints:
+            if key.match(identifier):
+                keys.append(key)
+
+        if len(keys) == 1:
+            return keys[0]
+        if len(keys) == 0:
+            raise NotFoundError(f"No key found for {identifier}")
+        raise TooManyError(f"More than one key matched the identifier {identifier}")

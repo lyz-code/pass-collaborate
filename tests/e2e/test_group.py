@@ -83,7 +83,7 @@ def test_group_show(runner: CliRunner, auth: "AuthStore", group: Group) -> None:
     [
         "developers",
         "developer@example.org",
-        "Marie",
+        "developer",
         "8DFE8782CD025ED6220D305115575911602DDD94",
     ],
 )
@@ -195,7 +195,7 @@ def test_group_add_users(
     saved_group = auth.get_group("test_group")
     assert saved_group.users is not None
     if "developer@example.org" in arguments:
-        assert "Marie" in saved_group.users
+        assert "developer" in saved_group.users
     if "admin@example.org" in arguments:
         assert "admin" in saved_group.users
 

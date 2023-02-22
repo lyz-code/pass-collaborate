@@ -59,7 +59,7 @@ def admin_() -> User:
 def developer_() -> User:
     """Create the developer user."""
     return User(
-        name="Marie",
+        name="developer",
         email=EmailStr("developer@example.org"),
         key="8DFE8782CD025ED6220D305115575911602DDD94",
     )

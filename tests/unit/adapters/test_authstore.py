@@ -83,7 +83,7 @@ def test_raises_exception_if_a_user_with_same_email_exists(auth: "AuthStore") ->
 @pytest.mark.parametrize(
     "identifier",
     [
-        "Marie",
+        "developer",
         "developer@example.org",
         "8DFE8782CD025ED6220D305115575911602DDD94",
     ],
@@ -106,7 +106,7 @@ def test_get_user_happy_path(
 @pytest.mark.parametrize(
     ("identifier", "out"),
     [
-        ("Marie", ["8DFE8782CD025ED6220D305115575911602DDD94"]),
+        ("developer", ["8DFE8782CD025ED6220D305115575911602DDD94"]),
         ("developer@example.org", ["8DFE8782CD025ED6220D305115575911602DDD94"]),
         (
             "8DFE8782CD025ED6220D305115575911602DDD94",

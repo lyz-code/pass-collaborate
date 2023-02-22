@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     [
         "developers",
         "developer@example.org",
-        "Marie",
+        "developer",
         "8DFE8782CD025ED6220D305115575911602DDD94",
     ],
 )
