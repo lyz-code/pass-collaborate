@@ -32,6 +32,7 @@ class PassStore(BaseModel):
 
     store_dir: Path
     key_dir: Path
+    auth_dir: Optional[Path] = None
     # ignore: the keys are going to be set by the root validator
     key: KeyStore = None  # type: ignore
     auth: AuthStore = None  # type: ignore
@@ -46,38 +47,49 @@ class PassStore(BaseModel):
     def set_adapters(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         """Set the adapters."""
         key = KeyStore(key_dir=values["key_dir"])
-        values["key"] = key
 
         auth = AuthStore()
-        auth_file = auth.check_auth_file(values["store_dir"])
-        auth.load(str(auth_file))
+        try:
+            if values["auth_dir"]:
+                auth_dir = values["store_dir"] / values["auth_dir"]
+            else:
+                auth_dir = values["store_dir"]
+        except KeyError:
+            auth_dir = values["store_dir"]
+        auth.load(f"{auth_dir}/.auth.yaml")
+        cls._load_missing_users_from_keystore(key, auth)
+        auth.save()
+
+        values["key"] = key
         values["auth"] = auth
-
-        cls._load_missing_users_from_keystore(values["store_dir"], key, auth)
-
         return values
 
     @classmethod
     def _load_missing_users_from_keystore(
-        cls, store_dir: Path, keystore: KeyStore, auth: AuthStore
+        cls, keystore: KeyStore, auth: AuthStore
     ) -> None:
         """Load the missing user information from the keystore."""
-        for key in cls.all_keys(store_dir):
+        missing_keys = []
+        for key in cls.all_keys(auth.store_dir):
             try:
                 auth.get_user(key)
-            except NotFoundError as error:
+            except NotFoundError:
                 for stored_key in keystore.public_key_fingerprints:
-                    if key == stored_key.id_:
+                    if stored_key.match(key):
                         auth.add_user(
                             name=stored_key.name,
-                            key=stored_key.id_,
+                            key=key,
                             email=stored_key.email,
                         )
                         break
                 else:
-                    raise NotFoundError(
-                        f"Please import the gpg key {key} in your gpg keystore"
-                    ) from error
+                    missing_keys.append(key)
+
+        if len(missing_keys) > 0:
+            raise NotFoundError(
+                "Please import the next gpg keys in your gpg keystore:\n"
+                + "\n".join(missing_keys)
+            )
         auth.save()
 
     def path(
@@ -110,7 +122,7 @@ class PassStore(BaseModel):
         if is_dir and not path.is_dir():
             raise ValueError(f"{path} is not a directory when it was expected to be")
 
-        if not path.exists() and path.suffix == "":
+        if not path.exists():
             path = path.with_name(f"{path.name}.gpg")
             if not path.exists():
                 raise NotFoundError(
@@ -281,8 +293,6 @@ class PassStore(BaseModel):
                 Not a real Path. If None it will take the root of the password
                 store
         """
-        pass_dir_path = pass_dir_path or str(self.store_dir)
-
         return self.path(pass_dir_path, is_dir=True).rglob("*.gpg")
 
     def _pass_path(self, path: Path) -> str:

@@ -79,8 +79,7 @@ def attacker_() -> User:
 def auth_(work_dir: Path) -> AuthStore:
     """Create the password store for an admin."""
     auth = AuthStore()
-    auth_file = auth.check_auth_file(work_dir / ".password-store")
-    auth.load(str(auth_file))
+    auth.load(str(work_dir / ".password-store" / ".auth.yaml"))
     return auth
 
 

@@ -1,11 +1,9 @@
 """Define the adapter of the Auth store."""
 
 import logging
-import os
-import shutil
 from contextlib import suppress
 from pathlib import Path
-from typing import Annotated, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from goodconf import GoodConf
 from pydantic import BaseModel, EmailStr, Field  # noqa: E0611
@@ -14,7 +12,7 @@ from ruyaml import YAML
 from ..exceptions import NotFoundError, TooManyError
 from .key import GPGKey
 
-Name = Annotated[str, Field(regex="^[0-9a-zA-Z_ ]+$")]
+Name = str
 Username = Name
 Identifier = Name
 GPGIDPath = str
@@ -56,30 +54,9 @@ class User(BaseModel):
 class AuthStore(GoodConf):
     """Define the adapter of the authorisation store."""
 
-    groups: List[Group]
-    users: List[User]
+    groups: List[Group] = Field(default_factory=list)
+    users: List[User] = Field(default_factory=list)
     access: Dict[GPGIDPath, List[Identifier]] = Field(default_factory=dict)
-
-    class Config:
-        """Define the default files to check."""
-
-        default_files = [
-            ".auth.yaml",
-            os.path.expanduser("~/.password-store/.auth.yaml"),
-        ]
-
-    @staticmethod
-    def check_auth_file(store_dir: Path) -> Path:
-        """Return the AuthStore configuration file.
-
-        If the file doesn't exist it will copy the default template.
-        """
-        auth_file = (store_dir / ".auth.yaml").expanduser()
-
-        if not auth_file.exists():
-            shutil.copyfile("assets/auth.yaml", auth_file)
-
-        return auth_file
 
     def add_user(self, name: str, key: str, email: str) -> User:
         """Create a new user.
@@ -150,17 +127,33 @@ class AuthStore(GoodConf):
 
     def load(self, filename: Optional[str] = None) -> None:
         """Load a configuration file."""
-        super().load(filename)
-        self._config_file = filename
+        if not filename:
+            filename = f"{self.store_dir}/.auth.yaml"
+        self._check_auth_file(filename)
+        super().load(self.config_file)
         self._load_gpg_id_files()
+
+    def _check_auth_file(self, filename: str) -> Path:
+        """Return the AuthStore configuration file.
+
+        If the file doesn't exist it will copy the default template.
+        """
+        config_file = Path(filename).expanduser()
+        self._config_file = str(config_file)
+
+        if not config_file.exists():
+            self.save()
+
+        return config_file
 
     def _load_gpg_id_files(self) -> None:
         """Load the data of the gpg-id files that is not already in the access store."""
-        for gpg_id in Path(self.config_file).parent.rglob(".gpg-id"):
+        for gpg_id in self.store_dir.rglob(".gpg-id"):
+            key = self.gpg_id_access_key(gpg_id)
             try:
-                self.access[str(gpg_id)]
+                self.access[key]
             except KeyError:
-                self.access[str(gpg_id)] = gpg_id.read_text().splitlines()
+                self.access[key] = gpg_id.read_text().splitlines()
 
     def save(self) -> None:
         """Save the contents of the authentication store."""
@@ -313,10 +306,12 @@ class AuthStore(GoodConf):
         remove_identifiers = remove_identifiers or []
 
         try:
-            access = self.access[gpg_id]
+            access = self.access[self.gpg_id_access_key(gpg_id)]
         except KeyError:
             # If the access doesn't exist it will take it's parent as a base
-            access = self.access[str(self.gpg_id_file(Path(gpg_id).parent))].copy()
+            access = self.access[
+                self.gpg_id_access_key(self.gpg_id_file(Path(gpg_id).parent))
+            ].copy()
 
         # Authorize new access
         for identifier in add_identifiers:
@@ -350,7 +345,7 @@ class AuthStore(GoodConf):
             with suppress(ValueError):
                 access.remove(revoke.name)
 
-        self.access[gpg_id] = access
+        self.access[self.gpg_id_access_key(gpg_id)] = access
 
         self.save()
 
@@ -362,7 +357,7 @@ class AuthStore(GoodConf):
             identifier: user or group identifier
         """
         authoree = self.get_identifier(identifier)
-        access = self.access[str(self.gpg_id_file(path))]
+        access = self.access[self.gpg_id_access_key(self.gpg_id_file(path))]
 
         if isinstance(authoree, Group):
             return authoree.name in access
@@ -390,7 +385,7 @@ class AuthStore(GoodConf):
             NotFoundError: If there is no data of that gpg-id file.
         """
         try:
-            authorees = self.access[gpg_id]
+            authorees = self.access[self.gpg_id_access_key(gpg_id)]
         except KeyError as error:
             raise NotFoundError(
                 f"There is no access information for the gpg-id file {gpg_id}"
@@ -427,3 +422,17 @@ class AuthStore(GoodConf):
             raise NotFoundError("Couldn't find the root .gpg-id of your store")
 
         return self.gpg_id_file(path.parent)
+
+    def gpg_id_access_key(self, gpg_id: Union[Path, str]) -> str:
+        """Return the key of the access property for the .gpg-id file.
+
+        It returns the relative path from self.store_dir so that different users
+        can use the same .auth.yaml file
+
+        Args:
+            gpg_id: A real path to a .gpg_id file.
+        """
+        if isinstance(gpg_id, str):
+            gpg_id = Path(gpg_id)
+
+        return str(gpg_id.relative_to(self.store_dir))

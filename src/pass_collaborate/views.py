@@ -44,6 +44,7 @@ def print_access(label: str, paths: List[str]) -> None:
         path = Path(_path)
         for parent in list(path.parents)[::-1]:
             if str(parent) == ".":
+                active_tree = tree
                 continue
             try:
                 active_tree = trees[str(parent)]

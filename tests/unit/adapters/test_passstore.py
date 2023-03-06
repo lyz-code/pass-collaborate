@@ -1,5 +1,6 @@
 """Test the implementation of the PassStore."""
 
+import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -31,6 +32,21 @@ def test_path_returns_the_expected_results(
     result = pass_.path(in_)
 
     assert result == Path(f"{pass_.store_dir}{out}")
+
+
+def test_path_supports_files_with_dots(pass_: "PassStore") -> None:
+    """
+    Given: A configured PassStore
+    When: transforming a path of a file with dots in the name
+    Then: the expected result is returned
+    """
+    shutil.move(
+        str(pass_.store_dir / "bastion.gpg"), str(pass_.store_dir / "the.bastion.gpg")
+    )
+
+    result = pass_.path("the.bastion")
+
+    assert result == pass_.store_dir / "the.bastion.gpg"
 
 
 @pytest.mark.parametrize(

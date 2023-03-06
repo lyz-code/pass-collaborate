@@ -49,3 +49,31 @@ def test_access_happy_path(
         """
     )
     assert result.stdout == expected_output
+
+
+def test_access_with_no_groups(
+    runner: CliRunner,
+    pass_: "PassStore",
+    admin: "User",
+) -> None:
+    """
+    Given: An auth store without groups
+    When: calling access command line with the admin
+    Then: A tree is shown with the elements it has access to
+    """
+    result = runner.invoke(app, ["access", admin.email])
+
+    assert result.exit_code == 0
+    expected_output = dedent(
+        f"""\
+        Password access for {admin.email}
+        ├── bastion
+        ├── database
+        │   ├── staging
+        │   └── production
+        └── web
+            ├── staging
+            └── production
+        """
+    )
+    assert result.stdout == expected_output

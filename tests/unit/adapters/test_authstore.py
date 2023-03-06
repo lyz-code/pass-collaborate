@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, List
 import pytest
 
 from pass_collaborate.exceptions import NotFoundError
-from pass_collaborate.model.auth import Group
+from pass_collaborate.model.auth import Group, User
 
 from ...factories import GroupFactory, UserFactory
 
 if TYPE_CHECKING:
-    from pass_collaborate.model.auth import AuthStore, User
+    from pass_collaborate.model.auth import AuthStore
     from pass_collaborate.model.key import GPGKey
 
 
@@ -159,3 +159,16 @@ def test_group_add_users_is_idempotent() -> None:
     group.add_users([user])  # act
 
     assert group.users == [user.name]
+
+
+def test_user_can_have_accents_on_name() -> None:
+    """
+    Given: the model of the user
+    When: Adding a user with accents in the name
+    Then: The user is added well
+    """
+    user = UserFactory.build(name="Péter")
+
+    result = User(name=user.name, email=user.email, key=user.key)
+
+    assert user == result

@@ -1,12 +1,16 @@
 """Test the KeyStore implementation."""
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import sh
 
 from pass_collaborate.adapters import KeyStore
 from pass_collaborate.exceptions import NotFoundError
+
+if TYPE_CHECKING:
+    from pass_collaborate.model.auth import User
 
 
 def test_create_keystore_raises_exception_if_home_is_not_a_directory() -> None:
@@ -84,3 +88,14 @@ def test_can_list_recipients_of_file(key: KeyStore, work_dir: Path) -> None:
     result = key.list_recipients(file_to_check)
 
     assert result == [key.private_key_fingerprints[0]]
+
+
+def test_find_key_works_with_short_id(key: KeyStore, admin: "User") -> None:
+    """
+    Given: A keystore adapter
+    When: Calling find_key with the short id of a gpg key
+    Then: The desired key is found
+    """
+    result = key.find_key("DECE5B3C889F13DE")
+
+    assert result.id_ == admin.key

@@ -19,6 +19,7 @@ class Key(BaseModel):
     id_: str
     name: str
     email: str
+    short_key: str
 
     def match(self, identifier: str) -> bool:
         """Check if the identifier matches the current key.
@@ -27,7 +28,7 @@ class Key(BaseModel):
         """
         return any(
             getattr(self, attribute) == identifier
-            for attribute in ["id_", "name", "email"]
+            for attribute in ["id_", "name", "email", "short_key"]
         )
 
 
@@ -145,6 +146,7 @@ class KeyStore:
                     id_=key["fingerprint"],
                     name=match["name"],
                     email=match["email"],
+                    short_key=key["keyid"],
                 )
             )
 
