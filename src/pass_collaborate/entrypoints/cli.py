@@ -1,5 +1,6 @@
 """Command line interface definition."""
 
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -12,6 +13,8 @@ from ..exceptions import NotFoundError
 from ..model.pass_ import PassStore
 from ..version import version_info
 from . import group, load_logger, user
+
+log = logging.getLogger(__name__)
 
 app = typer.Typer()
 app.add_typer(group.app, name="group")
@@ -78,10 +81,26 @@ def access(
             "It can be a user name, email, gpg key or group name."
         ),
     ),
+    deep: bool = typer.Option(
+        False,
+        help=(
+            "Enable to analyze the keys allowed for each file instead of trusting the "
+            ".gpg-id files."
+        ),
+    ),
 ) -> None:
     """Check what passwords does the user or group have access to."""
+    err_console = Console(stderr=True)
     pass_ = ctx.obj["pass"]
-    paths = pass_.access(identifier)
+    if deep:
+        log.info("If you have many files using --deep may be slow")
+
+    try:
+        paths = pass_.access(identifier, deep)
+    except NotFoundError as error:
+        err_console.print(str(error))
+        raise typer.Exit(code=404) from error
+
     views.print_access(label=identifier, paths=paths)
 
 

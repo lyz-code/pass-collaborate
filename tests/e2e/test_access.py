@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     ],
 )
 def test_access_happy_path(
-    runner: CliRunner,
+    cli_runner: CliRunner,
     pass_: "PassStore",
     developer: "User",
     identifier: str,
@@ -37,7 +37,7 @@ def test_access_happy_path(
     pass_.auth.add_group(name="developers", users=[developer.email])
     pass_.change_access(add_identifiers=["developers"], pass_dir_path="web")
 
-    result = runner.invoke(app, ["access", identifier])
+    result = cli_runner.invoke(app, ["access", identifier])
 
     assert result.exit_code == 0
     expected_output = dedent(
@@ -52,7 +52,7 @@ def test_access_happy_path(
 
 
 def test_access_with_no_groups(
-    runner: CliRunner,
+    cli_runner: CliRunner,
     pass_: "PassStore",
     admin: "User",
 ) -> None:
@@ -61,7 +61,7 @@ def test_access_with_no_groups(
     When: calling access command line with the admin
     Then: A tree is shown with the elements it has access to
     """
-    result = runner.invoke(app, ["access", admin.email])
+    result = cli_runner.invoke(app, ["access", admin.email])
 
     assert result.exit_code == 0
     expected_output = dedent(
@@ -74,6 +74,56 @@ def test_access_with_no_groups(
         └── web
             ├── staging
             └── production
+        """
+    )
+    assert result.stdout == expected_output
+
+
+@pytest.mark.skip("Not yet")
+def test_access_doesnt_analyze_the_files_by_default(
+    cli_runner: CliRunner,
+    pass_: "PassStore",
+    attacker: "User",
+    admin: "User",
+) -> None:
+    """
+    Given: An auth store with a file that is encrypted with an attacker's key
+        but that's not shown in the .gpg-id file
+    When: calling access command line with the attacker id with the deep flag
+    Then: The element is not shown as by default it doesn't analyze the files content.
+
+    For the sake of speed.
+    """
+    pass_.key.encrypt(pass_.store_dir / "bastion.gpg", [admin.key, attacker.key])
+
+    result = cli_runner.invoke(app, ["access", attacker.email])
+
+    assert result.exit_code == 0
+    assert "bastion" not in result.stdout
+
+
+@pytest.mark.skip("Not yet")
+def test_access_deep_analyzes_the_files(
+    cli_runner: CliRunner,
+    pass_: "PassStore",
+    attacker: "User",
+    admin: "User",
+) -> None:
+    """
+    Given: An auth store with a file that is encrypted with an attacker's key
+        but that's not shown in the .gpg-id file
+    When: calling access command line with the attacker id with the deep flag
+    Then: A tree is shown with the element it has access to
+    """
+    pass_.key.encrypt(pass_.store_dir / "bastion.gpg", [admin.key, attacker.key])
+
+    result = cli_runner.invoke(app, ["access", "--deep", attacker.email])
+
+    assert result.exit_code == 0
+    expected_output = dedent(
+        f"""\
+        Password access for {attacker.email}
+        └── bastion
         """
     )
     assert result.stdout == expected_output

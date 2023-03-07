@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import EmailStr
+from typer.testing import CliRunner
 
 from pass_collaborate.adapters import KeyStore
 from pass_collaborate.model.auth import AuthStore, User
@@ -87,3 +88,16 @@ def auth_(work_dir: Path) -> AuthStore:
 def key_(work_dir: Path) -> KeyStore:
     """Create the password store for an admin."""
     return KeyStore(key_dir=(work_dir / "gpg" / "admin"))
+
+
+@pytest.fixture(name="cli_runner")
+def runner_(work_dir: Path) -> CliRunner:
+    """Configure the typer cli runner."""
+    return CliRunner(
+        env={
+            "PASSWORD_STORE_DIR": str(work_dir / ".password-store"),
+            "GNUPGHOME": str(work_dir / "gpg" / "admin"),
+            "PASSWORD_AUTH_DIR": '',
+        },
+        mix_stderr=False,
+    )

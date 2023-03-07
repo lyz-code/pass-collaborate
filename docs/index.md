@@ -26,15 +26,17 @@ To add a new user you can run:
 pass user add user_identifier
 ```
 
-Where `user_identifier` can be it's name, email or GPG key. `pass_collaborate` will check your GPG keystore for keys that match that identifier and will fill the required data.
+Where `user_identifier` can be it's name, email or GPG key. `pass_collaborate` will check your GPG key store for keys that match that identifier and will fill the required data.
 
-If you don't like the `name` or `email` defined in the GPG key, you can override the stored values with the `--name` and `--email` flags, for example:
+If you don't like the `name` or `email` defined in the GPG key, you can override the stored values with the `--name` and `--email` flags. For example:
 
 ```bash
 pass user add lyz@riseup.net --name Lyz
 ```
 
 You may not need to create the users though, `pass_collaborate` tries to create them for you on the first run. You can check the existing users with `pass user list`.
+
+If you'd like to edit any field of the users, you can open the [`.auth.yaml` file](#how-does-it-work) directly. 
 
 ## Group management
 
@@ -83,7 +85,7 @@ To grant access to a group to the directories of your password store you can use
 pass group authorize group_name pass/path/1 pass/path/2
 ```
 
-`pass_collaborate` will take into account the permissions defined in the `.gpg-id` files before you started using it.
+Don't worry, `pass_collaborate` will take into account the permissions defined in the `.gpg-id` files before you started using it.
 
 ## Check access
 
@@ -102,7 +104,9 @@ Where `identifier` can be a user name, email, gpg key or group name.
 * Your GPG key store.
 * The information stored in your `pass` store (password files and `.gpg-id` files).
 
-To store the data that is not available in the above storages, `pass_collaborate` uses an `.auth.yaml` file.
+To store the data that is not available in the above storages, `pass_collaborate` uses an `.auth.yaml` file that is stored by default in `~/.password-store/.auth.yaml`. You can override this path with the environment variable `PASSWORD_AUTH_DIR` or the `--auth-dir` command line flag.
+
+This is useful if the shared password store is a subdirectory of your main password store.
 
 # References
 

@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-def test_version(runner: CliRunner) -> None:
+def test_version(cli_runner: CliRunner) -> None:
     """Prints program version when called with --version."""
-    result = runner.invoke(app, ["--version"])
+    result = cli_runner.invoke(app, ["--version"])
 
     assert result.exit_code == 0
     assert re.search(
@@ -34,7 +34,7 @@ def test_version(runner: CliRunner) -> None:
 
 
 def test_generates_default_auth_conf_if_none_is_available(
-    runner: CliRunner, pass_: "PassStore", admin: "User"
+    cli_runner: CliRunner, pass_: "PassStore", admin: "User"
 ) -> None:
     """
     Given: An environment without an auth config file.
@@ -44,7 +44,7 @@ def test_generates_default_auth_conf_if_none_is_available(
     """
     os.remove(pass_.auth.config_file)
 
-    result = runner.invoke(app, ["group", "add", "test_group"])
+    result = cli_runner.invoke(app, ["group", "add", "test_group"])
 
     assert result.exit_code == 0
     assert os.path.exists(pass_.auth.config_file)
@@ -53,19 +53,18 @@ def test_generates_default_auth_conf_if_none_is_available(
 
 
 def test_pass_returns_error_when_no_keys_are_found(
-    runner: CliRunner, pass_: "PassStore", caplog: LogCaptureFixture
+    cli_runner: CliRunner, pass_: "PassStore", caplog: LogCaptureFixture
 ) -> None:
     """
     Given: A password store that uses a GPG key that is not on our keystore
     When: calling any pass_collaborate command
     Then: An error is returned
     """
-    runner.mix_stderr = False
     user = UserFactory.build()
     gpg_id = pass_.store_dir / ".gpg-id"
     gpg_id.write_text(user.key)
 
-    result = runner.invoke(app, ["access", user.name])
+    result = cli_runner.invoke(app, ["access", user.name])
 
     assert result.exit_code == 404
     assert (
@@ -82,7 +81,7 @@ def test_pass_returns_error_when_no_keys_are_found(
     ],
 )
 def test_supports_auth_file_not_in_root_of_pass(
-    runner: CliRunner,
+    cli_runner: CliRunner,
     pass_: "PassStore",
     admin: "User",
     developer: "User",
@@ -107,7 +106,7 @@ def test_supports_auth_file_not_in_root_of_pass(
     new_gpg_id.write_text(developer.key)
     assert not new_config.exists()
 
-    result = runner.invoke(app, args, env=env)
+    result = cli_runner.invoke(app, args, env=env)
 
     assert result.exit_code == 0
     assert not os.path.exists(pass_.auth.config_file)

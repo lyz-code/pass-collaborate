@@ -132,36 +132,33 @@ class PassStore(BaseModel):
         return path
 
     def allowed_keys(
-        self,
-        path: Optional[Path] = None,
+        self, path: Optional[Path] = None, deep: bool = False
     ) -> List[GPGKey]:
         """Return the allowed gpg keys of the path.
 
-        * For files it analyzes the gpg data.
+        * For files it analyzes the gpg data if deep is enabled otherwise it
+            looks at the parent .gpg-id file like with directories.
         * For directories it traverses the paths to find the first .gpgid file,
-            if the auth store has access information of that file it uses that, else
-            it will return the content of the gpg-id file.
+            if the auth store has access information of that file it uses that,
+            else it will return the content of the gpg-id file.
 
         If the `path` is None, it will check all keys stored in all .gpg-id
         files in the password store.
 
         Args:
             path: A real path to an element of the pass store.
+            deep: Enable to analyze the keys allowed for each file instead of
+                trusting the .gpg-id files.
         """
         # Get existent keys
         if path:
-            if path.match("*.gpg"):
+            if path.match("*.gpg") and deep:
                 keys = self.key.list_recipients(path)
             else:
-                if path.is_dir():
-                    gpg_id = self.auth.gpg_id_file(path)
-                elif path.match("*.gpg-id"):
+                if path.match("*.gpg-id"):
                     gpg_id = path
                 else:
-                    raise ValueError(
-                        f"Don't know how to extract the allowed keys for {str(path)}"
-                    )
-
+                    gpg_id = self.auth.gpg_id_file(path)
                 try:
                     keys = self.auth.allowed_keys(str(gpg_id))
                 except NotFoundError:
@@ -331,11 +328,14 @@ class PassStore(BaseModel):
         remove_identifiers = remove_identifiers or []
 
         # Update the group users in the auth store
-        self.auth.change_group_users(
+        auth_store_changed = self.auth.change_group_users(
             group_name=group_name,
             add_identifiers=add_identifiers,
             remove_identifiers=remove_identifiers,
         )
+
+        if not auth_store_changed:
+            return
 
         # Reencrypt the passwords that the group has access to
         for gpg_id in self.store_dir.rglob(".gpg-id"):
@@ -347,24 +347,33 @@ class PassStore(BaseModel):
                     remove_identifiers=remove_identifiers,
                 )
 
-    def access(self, identifier: "Identifier") -> List[str]:
+    def access(self, identifier: "Identifier", deep: bool = False) -> List[str]:
         """Get a list of passwords the entity identified by identifier has access to.
 
         Args:
             identifier: Unique identifier of a group or person. It can be the
                 group name, person name, email or gpg key.
 
+            deep: Enable to analyze the keys allowed for each file instead of
+                trusting the .gpg-id files.
+
         Returns:
             List of `pass` paths that the entity has access to.
+
+        Raises:
+            NotFoundError: If the identifier doesn't match any known GPG keys
         """
         return [
             self._pass_path(path)
             for path in self._pass_paths()
-            if self.has_access(self._pass_path(path), identifier)
+            if self.has_access(self._pass_path(path), identifier, deep)
         ]
 
     def has_access(
-        self, pass_path: str, identifier: Optional["Identifier"] = None
+        self,
+        pass_path: str,
+        identifier: Optional["Identifier"] = None,
+        deep: bool = False,
     ) -> bool:
         """Return if the user of the password store has access to an element of the store.
 
@@ -386,9 +395,15 @@ class PassStore(BaseModel):
             pass_path: internal path of the password store. Not a real Path
             identifier: Unique identifier of a group or person. It can be the
                 group name, person name, email or gpg key.
+            deep: Enable to analyze the keys allowed for each file instead of
+                trusting the .gpg-id files.
+
+        Raises:
+            NotFoundError: If the identifier doesn't match any known GPG keys
         """
         path = self.path(pass_path)
 
+        log.debug(f"Checking access of {pass_path}")
         # If we want to check the active user
         if not identifier:
             if path.is_file():
@@ -396,8 +411,17 @@ class PassStore(BaseModel):
             keys = [self.key_id]
         else:
             keys = self.auth.find_keys(identifier)
+
+            if len(keys) == 0:
+                try:
+                    keys = [self.key.find_key(identifier).id_]
+                except NotFoundError as error:
+                    log.error(
+                        f"Coudn't find a valid GPG key for {identifier} in your store"
+                    )
+                    raise error
         try:
-            allowed_keys = self.allowed_keys(path)
+            allowed_keys = self.allowed_keys(path, deep)
             all_keys_allowed = all(key in allowed_keys for key in keys)
         except NotFoundError:
             # if self.key_id raises a NotFoundError is because there is no key that
@@ -409,7 +433,10 @@ class PassStore(BaseModel):
 
         # If it's a group we need to check that the group name is in the access list.
         if identifier:
-            return self.auth.has_access(path, identifier)
+            try:
+                return self.auth.has_access(path, identifier)
+            except NotFoundError:
+                return False
 
         return True
 

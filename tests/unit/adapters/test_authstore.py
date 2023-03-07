@@ -143,7 +143,7 @@ def test_group_remove_users_work_on_non_existent_user() -> None:
 
     result = group.remove_users(users=[user])
 
-    assert result is None
+    assert result is False
 
 
 def test_group_add_users_is_idempotent() -> None:
@@ -156,9 +156,10 @@ def test_group_add_users_is_idempotent() -> None:
     group = GroupFactory.build(users=[])
     group.add_users([user])
 
-    group.add_users([user])  # act
+    result = group.add_users([user])
 
-    assert group.users == [user.name]
+    assert group.users == [user.email]
+    assert result is False
 
 
 def test_user_can_have_accents_on_name() -> None:

@@ -19,13 +19,13 @@ if TYPE_CHECKING:
     from pass_collaborate.model.pass_ import PassStore
 
 
-def test_group_add(runner: CliRunner, auth: "AuthStore") -> None:
+def test_group_add(cli_runner: CliRunner, auth: "AuthStore") -> None:
     """
     Given: A configured environment
     When: calling group add command
     Then: A group is added
     """
-    result = runner.invoke(
+    result = cli_runner.invoke(
         app, ["group", "add", "test_group", "user@example.org", "admin@example.org"]
     )
 
@@ -37,7 +37,7 @@ def test_group_add(runner: CliRunner, auth: "AuthStore") -> None:
     )
 
 
-def test_group_list(runner: CliRunner, auth: "AuthStore") -> None:
+def test_group_list(cli_runner: CliRunner, auth: "AuthStore") -> None:
     """
     Given: A configured environment and a group added
     When: calling group list command
@@ -45,7 +45,7 @@ def test_group_list(runner: CliRunner, auth: "AuthStore") -> None:
     """
     auth.add_group("test_group")
 
-    result = runner.invoke(app, ["group", "list"])
+    result = cli_runner.invoke(app, ["group", "list"])
 
     assert result.exit_code == 0
     assert "test_group" in result.stdout
@@ -59,7 +59,7 @@ def test_group_list(runner: CliRunner, auth: "AuthStore") -> None:
         GroupFactory.build(users=["user@example.org", "admin@example.org"]),
     ],
 )
-def test_group_show(runner: CliRunner, auth: "AuthStore", group: Group) -> None:
+def test_group_show(cli_runner: CliRunner, auth: "AuthStore", group: Group) -> None:
     """
     Given: A configured environment and a group added
     When: calling group show command
@@ -67,7 +67,7 @@ def test_group_show(runner: CliRunner, auth: "AuthStore", group: Group) -> None:
     """
     auth.add_group(name=group.name, users=group.users)
 
-    result = runner.invoke(app, ["group", "show", group.name])
+    result = cli_runner.invoke(app, ["group", "show", group.name])
 
     assert result.exit_code == 0
     assert re.search(rf"Name *{group.name}", result.stdout)
@@ -88,7 +88,7 @@ def test_group_show(runner: CliRunner, auth: "AuthStore", group: Group) -> None:
     ],
 )
 def test_group_authorize_a_directory(
-    runner: CliRunner,
+    cli_runner: CliRunner,
     pass_: "PassStore",
     pass_dev: "PassStore",
     entity: str,
@@ -114,7 +114,7 @@ def test_group_authorize_a_directory(
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert not pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
 
-    result = runner.invoke(app, ["group", "authorize", entity, "web"])
+    result = cli_runner.invoke(app, ["group", "authorize", entity, "web"])
 
     assert result.exit_code == 0
     pass_.auth.reload()
@@ -132,16 +132,14 @@ def test_group_authorize_a_directory(
     )
 
 
-def test_group_authorize_cant_authorize_file(runner: CliRunner) -> None:
+def test_group_authorize_cant_authorize_file(cli_runner: CliRunner) -> None:
     """
     Given: A configured environment
     When: Trying to authorize a file
     Then: An error is raised as we don't yet support giving granular
         permissions to files.
     """
-    runner.mix_stderr = False
-
-    result = runner.invoke(app, ["group", "authorize", "user", "bastion"])
+    result = cli_runner.invoke(app, ["group", "authorize", "user", "bastion"])
 
     assert result.exit_code == 2
     assert "Changing access to a file is not yet supported" in result.stderr
@@ -161,7 +159,7 @@ def test_group_authorize_cant_authorize_file(runner: CliRunner) -> None:
     ],
 )
 def test_group_add_users(
-    runner: CliRunner,
+    cli_runner: CliRunner,
     auth: "AuthStore",
     arguments: List[str],
     developer: User,
@@ -176,20 +174,20 @@ def test_group_add_users(
     auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     auth.add_group("test_group")
 
-    result = runner.invoke(app, arguments)
+    result = cli_runner.invoke(app, arguments)
 
     assert result.exit_code == 0
     auth.reload()
     saved_group = auth.get_group("test_group")
     assert saved_group.users is not None
     if "developer@example.org" in arguments:
-        assert "developer" in saved_group.users
+        assert "developer@example.org" in saved_group.users
     if "admin@example.org" in arguments:
-        assert "admin" in saved_group.users
+        assert "admin@example.org" in saved_group.users
 
 
 def test_group_with_associated_passwords_add_users(
-    runner: CliRunner,
+    cli_runner: CliRunner,
     pass_: "PassStore",
     pass_dev: "PassStore",
     developer: User,
@@ -207,7 +205,9 @@ def test_group_with_associated_passwords_add_users(
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert not pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
 
-    result = runner.invoke(app, ["group", "add-users", developer.email, "developers"])
+    result = cli_runner.invoke(
+        app, ["group", "add-users", developer.email, "developers"], env={}
+    )
 
     assert result.exit_code == 0
     for environment in ("production", "staging"):
@@ -216,7 +216,7 @@ def test_group_with_associated_passwords_add_users(
 
 
 def test_group_remove_user_from_group(
-    runner: CliRunner,
+    cli_runner: CliRunner,
     auth: "AuthStore",
     pass_: "PassStore",
     pass_dev: "PassStore",
@@ -235,7 +235,7 @@ def test_group_remove_user_from_group(
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
 
-    result = runner.invoke(
+    result = cli_runner.invoke(
         app, ["group", "remove-users", developer.email, "developers"]
     )
 
@@ -246,7 +246,7 @@ def test_group_remove_user_from_group(
 
 
 def test_group_remove_user_that_is_not_part_of_group(
-    runner: CliRunner,
+    cli_runner: CliRunner,
     developer: User,
     pass_: "PassStore",
     caplog: LogCaptureFixture,
@@ -260,7 +260,7 @@ def test_group_remove_user_that_is_not_part_of_group(
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
     pass_.auth.add_group(name="developers", users=[])
 
-    result = runner.invoke(
+    result = cli_runner.invoke(
         app, ["group", "remove-users", developer.email, "developers"]
     )
 

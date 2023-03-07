@@ -25,6 +25,8 @@ def load_logger(verbose: bool = False) -> None:  # pragma no cover
         logging.basicConfig(
             stream=sys.stderr, level=logging.DEBUG, format="  %(levelname)s %(message)s"
         )
+        logging.getLogger("goodconf").setLevel(logging.INFO)
+        logging.getLogger("gnupg").setLevel(logging.INFO)
     else:
         logging.basicConfig(
             stream=sys.stderr, level=logging.INFO, format="  %(levelname)s %(message)s"

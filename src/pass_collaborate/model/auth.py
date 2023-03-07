@@ -27,20 +27,38 @@ class Group(BaseModel):
     name: Name
     users: List[Username] = Field(default_factory=list)
 
-    def add_users(self, users: List["User"]) -> None:
-        """Add a list of users from the group."""
-        for user in users:
-            log.info(f"Adding user {user.name} to group {self.name}")
-        self.users = list(set(self.users + [user.name for user in users]))
+    def add_users(self, users: List["User"]) -> bool:
+        """Add a list of users from the group.
 
-    def remove_users(self, users: List["User"]) -> None:
-        """Remove a list of users from the group."""
+        Returns:
+            If there was any user added.
+        """
+        changed = False
+
+        for user in users:
+            if user.email not in self.users:
+                log.info(f"Adding user {user.name} to group {self.name}")
+                self.users.append(user.email)
+                changed = True
+
+        return changed
+
+    def remove_users(self, users: List["User"]) -> bool:
+        """Remove a list of users from the group.
+
+        Returns:
+            If there was any user removed.
+        """
+        changed = False
         for user in users:
             log.info(f"Removing user {user.name} from group {self.name}")
             try:
                 self.users.remove(user.email)
+                changed = True
             except ValueError:
                 log.info(f"User {user.name} is not part of the {self.name} group")
+
+        return changed
 
 
 class User(BaseModel):
@@ -259,7 +277,7 @@ class AuthStore(GoodConf):
         group_name: str,
         add_identifiers: Optional[List[Identifier]] = None,
         remove_identifiers: Optional[List[Identifier]] = None,
-    ) -> None:
+    ) -> bool:
         """Change the list of users of an existent group.
 
         Args:
@@ -268,6 +286,9 @@ class AuthStore(GoodConf):
                 user name, email or gpg key.
             remove_identifiers: Unique identifier of a user to remove. It can
                 be the user name, email or gpg key.
+
+        Returns:
+            If there has been applied any change in the auth store
         """
         add_identifiers = add_identifiers or []
         remove_identifiers = remove_identifiers or []
@@ -275,13 +296,17 @@ class AuthStore(GoodConf):
 
         # Add users
         new_users = [self.get_user(id_) for id_ in add_identifiers]
-        group.add_users(users=new_users)
+        added_users = group.add_users(users=new_users)
 
         # Remove users
         users_to_remove = [self.get_user(id_) for id_ in remove_identifiers]
-        group.remove_users(users=users_to_remove)
+        removed_users = group.remove_users(users=users_to_remove)
 
         self.save()
+
+        if added_users or removed_users:
+            return True
+        return False
 
     def change_access(
         self,
@@ -412,6 +437,9 @@ class AuthStore(GoodConf):
 
         if path.match("*.gpg-id"):
             return path
+
+        if path.is_file():
+            path = path.parent
 
         gpg_id_path = path / ".gpg-id"
 
