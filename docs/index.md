@@ -85,7 +85,11 @@ To grant access to a group to the directories of your password store you can use
 pass group authorize group_name pass/path/1 pass/path/2
 ```
 
-Don't worry, `pass_collaborate` will take into account the permissions defined in the `.gpg-id` files before you started using it.
+If it's the first time you `authorize` a password path, `pass_collaborate` will grant access to the `group_name` members in addition to the people that already had access to that path. For example, imagine we start with a password store that has a `.gpg-id` file at the top that grants access to `admin@example.org` to all the passwords stored. When we run `pass group authorize developers web`, `pass_collaborate` will create a new `.gpg-id` file on the `web` directory granting access both to `admin` and to the members of the `developers` group. This is done this way to prevent you from locking yourself out unintentionally. If you only want `developers` to have access to the directory (not `admin` or any of the keys defined in the parent directories), you can use the `--ignore-parent` flag. For example:
+
+```bash
+pass group authorize --ignore-parent developers web
+```
 
 ## Check access
 

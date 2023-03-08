@@ -88,17 +88,28 @@ def authorize(  # noqa: B008
     pass_paths: List[str] = typer.Argument(
         ..., help="pass directories to give access to."
     ),
+    ignore_parent: bool = typer.Option(
+        False,
+        help="Ignore the access permissions defined in the parent .gpg-id",
+    ),
 ) -> None:
     """Authorize a group to a directory of the password store."""
     pass_ = ctx.obj["pass"]
     err_console = Console(stderr=True)
     for path in pass_paths:
         try:
-            pass_.change_access(pass_dir_path=path, add_identifiers=[group_name])
+            pass_.change_access(
+                pass_dir_path=path,
+                add_identifiers=[group_name],
+                ignore_parent=ignore_parent,
+            )
         except ValueError as error:
             err_console.print(str(error))
             raise typer.Exit(code=2) from error
         except exceptions.TooManyError as error:
+            err_console.print(str(error))
+            raise typer.Exit(code=401) from error
+        except exceptions.NotFoundError as error:
             err_console.print(str(error))
             raise typer.Exit(code=401) from error
 

@@ -32,7 +32,7 @@ class PassStore(BaseModel):
 
     store_dir: Path
     key_dir: Path
-    auth_dir: Optional[Path] = None
+    auth_dir: Path = Path("")
     # ignore: the keys are going to be set by the root validator
     key: KeyStore = None  # type: ignore
     auth: AuthStore = None  # type: ignore
@@ -327,7 +327,7 @@ class PassStore(BaseModel):
         add_identifiers = add_identifiers or []
         remove_identifiers = remove_identifiers or []
 
-        # Update the group users in the auth store
+        log.debug("Update the group users in the auth store")
         auth_store_changed = self.auth.change_group_users(
             group_name=group_name,
             add_identifiers=add_identifiers,
@@ -337,14 +337,16 @@ class PassStore(BaseModel):
         if not auth_store_changed:
             return
 
-        # Reencrypt the passwords that the group has access to
-        for gpg_id in self.store_dir.rglob(".gpg-id"):
+        log.debug("Reencrypt the passwords that the group has access to")
+        start_dir = self.store_dir / self.auth_dir
+        for gpg_id in start_dir.rglob(".gpg-id"):
             pass_path = self._pass_path(gpg_id.parent)
             if self.has_access(pass_path, group_name):
                 self.change_access(
                     pass_dir_path=pass_path,
                     add_identifiers=add_identifiers,
                     remove_identifiers=remove_identifiers,
+                    auth_upstream_change=auth_store_changed,
                 )
 
     def access(self, identifier: "Identifier", deep: bool = False) -> List[str]:
@@ -440,11 +442,14 @@ class PassStore(BaseModel):
 
         return True
 
-    def change_access(
+    # R0913: too many arguments 6/5, but self shouldn't count :P
+    def change_access(  # noqa: R0913
         self,
         pass_dir_path: str,
         add_identifiers: Optional[List["Identifier"]] = None,
         remove_identifiers: Optional[List["Identifier"]] = None,
+        ignore_parent: bool = False,
+        auth_upstream_change: bool = False,
     ) -> None:
         """Authorize or revoke a group or person to a directory of the password store.
 
@@ -460,6 +465,11 @@ class PassStore(BaseModel):
             remove_identifiers: Unique identifiers of groups or people to revoke.
                 It can be the group name, person name, email or gpg key. Can be
                 used in addition to `keys`.
+            ignore_parent: Ignore the access permissions defined in the parent .gpg-id.
+                It shouldn't be True by default because it will risk locking
+                yourself out.
+            auth_upstream_change: If there was a change in the auth done by any
+                operations before the call of this function
 
         Raises:
             ValueError: When trying to authorize a file.
@@ -478,10 +488,13 @@ class PassStore(BaseModel):
 
         gpg_id = f"{self.path(pass_dir_path)}/.gpg-id"
 
-        self.auth.change_access(
+        auth_changed = self.auth.change_access(
             gpg_id=gpg_id,
             add_identifiers=add_identifiers,
             remove_identifiers=remove_identifiers,
+            ignore_parent=ignore_parent,
         )
-        self.update_gpg_id_file(gpg_id)
-        self.reencrypt_directory(pass_dir_path)
+
+        if auth_changed or auth_upstream_change:
+            self.update_gpg_id_file(gpg_id)
+            self.reencrypt_directory(pass_dir_path)

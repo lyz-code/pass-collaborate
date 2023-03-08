@@ -43,8 +43,8 @@ def main(  # noqa: R0913
         "~/.password-store", envvar="PASSWORD_STORE_DIR"
     ),
     key_dir: Path = typer.Option("~/.gnupg", envvar="GNUPGHOME"),  # noqa: M511, B008
-    auth_dir: Optional[Path] = typer.Option(  # noqa: M511, B008
-        None,
+    auth_dir: Path = typer.Option(  # noqa: M511, B008
+        Path(""),
         envvar="PASSWORD_AUTH_DIR",
         help=(
             "Relative path from the root of the password store to the directory "

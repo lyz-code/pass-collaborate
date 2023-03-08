@@ -68,6 +68,12 @@ class User(BaseModel):
     email: EmailStr
     key: GPGKey
 
+    def match(self, identifier: str) -> bool:
+        """Check if the user matches the identifier."""
+        if identifier in (self.name, self.key, self.email):
+            return True
+        return False
+
 
 class AuthStore(GoodConf):
     """Define the adapter of the authorisation store."""
@@ -212,11 +218,7 @@ class AuthStore(GoodConf):
             NotFoundError: if no user matches the identifier
             TooManyError: if more than one user matches the identifier
         """
-        user_match = [
-            user
-            for user in self.users
-            if identifier in (user.name, user.key, user.email)
-        ]
+        user_match = [user for user in self.users if user.match(identifier)]
 
         if len(user_match) == 0:
             raise NotFoundError(f"There is no user that matches {identifier}.")
@@ -300,11 +302,11 @@ class AuthStore(GoodConf):
         remove_identifiers = remove_identifiers or []
         group, _ = self.get_group(group_name)
 
-        # Add users
+        log.debug("Add users")
         new_users = [self.get_user(id_) for id_ in add_identifiers]
         added_users = group.add_users(users=new_users)
 
-        # Remove users
+        log.debug("Remove users")
         users_to_remove = [self.get_user(id_) for id_ in remove_identifiers]
         removed_users = group.remove_users(users=users_to_remove)
 
@@ -319,7 +321,8 @@ class AuthStore(GoodConf):
         gpg_id: GPGIDPath,
         add_identifiers: Optional[List[Identifier]] = None,
         remove_identifiers: Optional[List[Identifier]] = None,
-    ) -> None:
+        ignore_parent: bool = False,
+    ) -> bool:
         """Authorize or revoke a group or person to a directory of the password store.
 
         It will store the access information in the auth store.
@@ -332,7 +335,14 @@ class AuthStore(GoodConf):
             remove_identifiers: Unique identifiers of groups or people to revoke.
                 It can be the group name, person name, email or gpg key. Can be
                 used in addition to `keys`.
+            ignore_parent: Ignore the access permissions defined in the parent .gpg-id.
+                It shouldn't be True by default because it will risk locking
+                yourself out.
+
+        Returns:
+            Whether a change was made.
         """
+        changed = False
         add_identifiers = add_identifiers or []
         remove_identifiers = remove_identifiers or []
 
@@ -340,14 +350,23 @@ class AuthStore(GoodConf):
             access = self.access[self.gpg_id_access_key(gpg_id)]
         except KeyError:
             # If the access doesn't exist it will take it's parent as a base
-            access = self.access[
-                self.gpg_id_access_key(self.gpg_id_file(Path(gpg_id).parent))
-            ].copy()
+            if not ignore_parent:
+                access = self.access[
+                    self.gpg_id_access_key(self.gpg_id_file(Path(gpg_id).parent))
+                ].copy()
+            else:
+                access = []
 
-        # Authorize new access
+        log.debug("Authorize new access")
         for identifier in add_identifiers:
             new_access = self.get_identifier(identifier)
 
+            if new_access.name in access:
+                log.info(
+                    f"{new_access.name} is already authorized to access "
+                    f"{gpg_id}, skipping"
+                )
+                continue
             if isinstance(new_access, User):
                 log.info(
                     f"  Authorizing access to user {new_access.name}: "
@@ -355,10 +374,23 @@ class AuthStore(GoodConf):
                 )
             else:
                 log.info(f"  Authorizing access to group {new_access.name}")
+                log.debug(
+                    "  Removing the gpg keys that are already tracked by the "
+                    "group we're adding"
+                )
+                _, users = self.get_group(identifier)
+                for element in access:
+                    if any(user.match(element) for user in users):
+                        log.debug(
+                            f"{element} is already included in {identifier} "
+                            "removing it from the access entry"
+                        )
+                        access.remove(element)
 
             access.append(new_access.name)
+            changed = True
 
-        # Revoke existing access
+        log.debug("Revoke existing access")
         for identifier in remove_identifiers:
             revoke = self.get_identifier(identifier)
 
@@ -375,10 +407,12 @@ class AuthStore(GoodConf):
             # binded to the group
             with suppress(ValueError):
                 access.remove(revoke.name)
+                changed = True
 
         self.access[self.gpg_id_access_key(gpg_id)] = access
 
         self.save()
+        return changed
 
     def has_access(self, path: Path, identifier: "Identifier") -> bool:
         """Check in the stored access if the identdifier is allowed to the gpg_id file.

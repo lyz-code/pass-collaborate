@@ -166,6 +166,49 @@ def test_group_authorize_cant_authorize_file(cli_runner: CliRunner) -> None:
     assert "Changing access to a file is not yet supported" in result.stderr
 
 
+def test_group_authorize_is_idempotent(
+    cli_runner: CliRunner, pass_: "PassStore", admin: "User"
+) -> None:
+    """
+    Given: A configured environment
+    When: Trying to authorize a directory that is already authorized
+    Then: It doesn't do anything as it's already authorized.
+    """
+    pass_.auth.add_group(name="admins", user_ids=[admin.email])
+    pass_.change_access("web", ["admins"])
+    assert pass_.auth.access["web/.gpg-id"] == ["admins"]
+
+    result = cli_runner.invoke(app, ["group", "authorize", "admins", "web"])
+
+    assert result.exit_code == 0
+    pass_.auth.reload()
+    assert pass_.auth.access["web/.gpg-id"] == ["admins"]
+
+
+def test_group_authorize_can_ignore_parent(
+    cli_runner: CliRunner, pass_: "PassStore", admin: "User", developer: "User"
+) -> None:
+    """
+    Given: A configured environment
+    When: Authorize a directory with the --ignore_parent flag
+    Then: It ignores the permissions of the parent .gpg-id file
+        and sets only the new one
+    """
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group(name="developers", user_ids=[developer.email])
+    assert pass_.has_access("web", admin.name)
+    assert not pass_.has_access("web", "developers")
+
+    result = cli_runner.invoke(
+        app, ["group", "authorize", "--ignore-parent", "developers", "web"]
+    )
+
+    assert result.exit_code == 0
+    pass_.auth.reload()
+    assert not pass_.has_access("web", admin.name)
+    assert pass_.has_access("web", "developers")
+
+
 @pytest.mark.parametrize(
     "arguments",
     [
