@@ -97,7 +97,7 @@ def runner_(work_dir: Path) -> CliRunner:
         env={
             "PASSWORD_STORE_DIR": str(work_dir / ".password-store"),
             "GNUPGHOME": str(work_dir / "gpg" / "admin"),
-            "PASSWORD_AUTH_DIR": '',
+            "PASSWORD_AUTH_DIR": "",
         },
         mix_stderr=False,
     )

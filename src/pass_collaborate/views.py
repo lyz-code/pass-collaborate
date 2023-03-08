@@ -1,12 +1,16 @@
 """Define the views of the program."""
 
 from pathlib import Path
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 from pydantic import BaseModel  # noqa: E0611
 from rich.console import Console
 from rich.table import Table
+from rich.text import Text
 from rich.tree import Tree
+
+if TYPE_CHECKING:
+    from .model.auth import Group, User
 
 
 def print_model(model: BaseModel) -> None:
@@ -55,5 +59,30 @@ def print_access(label: str, paths: List[str]) -> None:
                     active_tree = active_tree.add(parent.name)
                 trees[str(parent)] = active_tree
         active_tree.add(path.name)
+
+    Console().print(tree)
+
+
+def print_group(group: "Group", users: List["User"]) -> None:
+    """Print the information of a group.
+
+    Args:
+        group: Group to print
+        users: List of Users of the group
+    """
+    # Create the tree structure
+    tree = Tree(group.name)
+
+    for user in users:
+        tree.add(
+            Text.assemble(
+                (user.name, "magenta"),
+                ": ",
+                (user.email, "green"),
+                " (",
+                user.key,
+                ")",
+            ),
+        )
 
     Console().print(tree)

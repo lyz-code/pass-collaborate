@@ -3,7 +3,7 @@
 import logging
 from contextlib import suppress
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from goodconf import GoodConf
 from pydantic import BaseModel, EmailStr, Field  # noqa: E0611
@@ -25,7 +25,7 @@ class Group(BaseModel):
     """Model a group of users."""
 
     name: Name
-    users: List[Username] = Field(default_factory=list)
+    users: List[EmailStr] = Field(default_factory=list)
 
     def add_users(self, users: List["User"]) -> bool:
         """Add a list of users from the group.
@@ -100,21 +100,22 @@ class AuthStore(GoodConf):
         self.save()
         return new_user
 
-    def add_group(self, name: str, users: Optional[List[str]] = None) -> Group:
+    def add_group(self, name: str, user_ids: Optional[List[str]] = None) -> Group:
         """Create a new group of users.
 
         Args:
             name: name of the group
-            users: users to add to the group.
+            user_ids: user identifiers to add to the group.
 
         Raises:
             ValueError: if the group already exists
         """
-        users = users or []
+        user_ids = user_ids or []
+        user_emails = [self.get_user(id_).email for id_ in user_ids]
         if name in self.group_names:
             raise ValueError(f"The group {name} already exists.")
 
-        new_group = Group(name=name, users=users)
+        new_group = Group(name=name, users=user_emails)
         self.groups.append(new_group)
         self.save()
         return new_group
@@ -180,7 +181,7 @@ class AuthStore(GoodConf):
             yaml.default_flow_style = False
             yaml.dump(self.dict(), file_cursor)
 
-    def get_group(self, name: str) -> Group:
+    def get_group(self, name: str) -> Tuple[Group, List[User]]:
         """Return the group that matches the group name.
 
         Raises:
@@ -190,9 +191,15 @@ class AuthStore(GoodConf):
 
         if len(group_match) == 0:
             raise NotFoundError(f"There is no group that matches {name}.")
-        if len(group_match) == 1:
-            return group_match[0]
-        raise TooManyError(f"More than one group matched the selected criteria {name}.")
+        if len(group_match) > 1:
+            raise TooManyError(
+                f"More than one group matched the selected criteria {name}."
+            )
+
+        group = group_match[0]
+        users = [self.get_user(id_) for id_ in group.users]
+
+        return group, users
 
     def get_user(self, identifier: Identifier) -> User:
         """Return the user that matches the user identifier.
@@ -237,7 +244,7 @@ class AuthStore(GoodConf):
 
         # new groups
         with suppress(NotFoundError):
-            group = self.get_group(identifier)
+            group, _ = self.get_group(identifier)
             if user:
                 raise TooManyError(
                     f"Both user {user.name} and group {group.name} "
@@ -266,9 +273,8 @@ class AuthStore(GoodConf):
 
         # Find in the groups
         with suppress(NotFoundError):
-            users.extend(
-                [self.get_user(user) for user in self.get_group(identifier).users]
-            )
+            _, group_users = self.get_group(identifier)
+            users.extend(group_users)
 
         return [user.key for user in users]
 
@@ -292,7 +298,7 @@ class AuthStore(GoodConf):
         """
         add_identifiers = add_identifiers or []
         remove_identifiers = remove_identifiers or []
-        group = self.get_group(group_name)
+        group, _ = self.get_group(group_name)
 
         # Add users
         new_users = [self.get_user(id_) for id_ in add_identifiers]

@@ -131,7 +131,7 @@ def test_pass_has_access_group_is_not_equal_to_their_keys(
     When: checking the access to that directory for a group that only has that gpg key
     Then: return false as the user is allowed but not the group
     """
-    pass_.auth.add_group(name="developers", users=[admin.email])
+    pass_.auth.add_group(name="developers", user_ids=[admin.email])
 
     result = pass_.has_access("", "developers")
 

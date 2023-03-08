@@ -17,11 +17,17 @@ def add(
         ...,
         help="name of the group",
     ),
-    users: Optional[List[str]] = typer.Argument(None, help="users to add to the group"),
+    user_ids: Optional[List[str]] = typer.Argument(
+        None,
+        help=(
+            "Identifiers of the users to add to the group. It can be name, "
+            "email or GPG key id."
+        ),
+    ),
 ) -> None:
     """Add a new group."""
     auth = ctx.obj["pass"].auth
-    auth.add_group(name=name, users=users)
+    auth.add_group(name=name, user_ids=user_ids)
 
 
 @app.command()
@@ -71,8 +77,8 @@ def list_(ctx: typer.Context) -> None:
 def show(ctx: typer.Context, name: str) -> None:
     """Print the information of a group."""
     auth = ctx.obj["pass"].auth
-    group = auth.get_group(name)
-    views.print_model(group)
+    group, users = auth.get_group(name)
+    views.print_group(group, users)
 
 
 @app.command()

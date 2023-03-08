@@ -19,21 +19,30 @@ if TYPE_CHECKING:
     from pass_collaborate.model.pass_ import PassStore
 
 
-def test_group_add(cli_runner: CliRunner, auth: "AuthStore") -> None:
+def test_group_add(
+    cli_runner: CliRunner,
+    pass_: "PassStore",
+    admin: "User",
+    developer: "User",
+    attacker: "User",
+) -> None:
     """
     Given: A configured environment
-    When: calling group add command
-    Then: A group is added
+    When: calling group add command with an email, a user name and a key id
+    Then: A group is added and the data stored in the auth store are the emails
     """
+    pass_.auth.add_user(developer.name, developer.key, developer.email)
+    pass_.auth.add_user(attacker.name, attacker.key, attacker.email)
+
     result = cli_runner.invoke(
-        app, ["group", "add", "test_group", "user@example.org", "admin@example.org"]
+        app, ["group", "add", "test_group", developer.email, admin.name, attacker.key]
     )
 
     assert result.exit_code == 0
-    auth.reload()
-    saved_group = auth.get_group("test_group")
+    pass_.auth.reload()
+    saved_group, _ = pass_.auth.get_group("test_group")
     assert saved_group == Group(
-        name="test_group", users=["user@example.org", "admin@example.org"]
+        name="test_group", users=[developer.email, admin.email, attacker.email]
     )
 
 
@@ -55,27 +64,39 @@ def test_group_list(cli_runner: CliRunner, auth: "AuthStore") -> None:
     "group",
     [
         GroupFactory.build(users=[]),
-        GroupFactory.build(users=["user@example.org"]),
-        GroupFactory.build(users=["user@example.org", "admin@example.org"]),
+        GroupFactory.build(users=["developer@example.org"]),
+        GroupFactory.build(users=["developer@example.org", "admin@example.org"]),
     ],
 )
-def test_group_show(cli_runner: CliRunner, auth: "AuthStore", group: Group) -> None:
+def test_group_show(
+    cli_runner: CliRunner,
+    pass_: "PassStore",
+    developer: "User",
+    admin: "User",
+    group: Group,
+) -> None:
     """
     Given: A configured environment and a group added
     When: calling group show command
     Then: The group information is shown
     """
-    auth.add_group(name=group.name, users=group.users)
+    pass_.auth.add_user(developer.name, developer.key, developer.email)
+    pass_.auth.add_group(name=group.name, user_ids=group.users)  # type: ignore
 
     result = cli_runner.invoke(app, ["group", "show", group.name])
 
     assert result.exit_code == 0
-    assert re.search(rf"Name *{group.name}", result.stdout)
+    assert re.search(rf"{group.name}", result.stdout)
     assert group.users is not None
     if len(group.users) > 0:
-        assert re.search(rf"Users *- {group.users[0]}", result.stdout)
-        for user in group.users[1:]:
-            assert f"- {user}" in result.stdout
+        assert re.search(
+            rf".*{developer.name}: {developer.email} \({developer.key}\).*",
+            result.stdout,
+        )
+    if len(group.users) > 1:
+        assert re.search(
+            rf".*{admin.name}: {admin.email} \({admin.key}\).*", result.stdout
+        )
 
 
 @pytest.mark.parametrize(
@@ -105,7 +126,7 @@ def test_group_authorize_a_directory(
     gpg_id = Path(pass_.store_dir / "web" / ".gpg-id")
     assert not gpg_id.is_file()
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    pass_.auth.add_group(name="developers", users=["developer@example.org"])
+    pass_.auth.add_group(name="developers", user_ids=["developer@example.org"])
     # Check that the permissions are right
     for element in ["web", "database", "bastion"]:
         assert pass_.has_access(element)
@@ -178,12 +199,12 @@ def test_group_add_users(
 
     assert result.exit_code == 0
     auth.reload()
-    saved_group = auth.get_group("test_group")
+    saved_group, saved_users = auth.get_group("test_group")
     assert saved_group.users is not None
     if "developer@example.org" in arguments:
-        assert "developer@example.org" in saved_group.users
+        assert developer in saved_users
     if "admin@example.org" in arguments:
-        assert "admin@example.org" in saved_group.users
+        assert admin in saved_users
 
 
 def test_group_with_associated_passwords_add_users(
@@ -199,7 +220,7 @@ def test_group_with_associated_passwords_add_users(
     Then: the new users are able to read the group passwords
     """
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    pass_.auth.add_group(name="developers", users=[admin.email])
+    pass_.auth.add_group(name="developers", user_ids=[admin.email])
     pass_.change_access(add_identifiers=["developers"], pass_dir_path="web")
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
@@ -229,7 +250,7 @@ def test_group_remove_user_from_group(
     Then: the removed user are not able to read the group passwords
     """
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    pass_.auth.add_group(name="developers", users=[admin.email, developer.email])
+    pass_.auth.add_group(name="developers", user_ids=[admin.email, developer.email])
     pass_.change_access(add_identifiers=["developers"], pass_dir_path="web")
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
@@ -258,7 +279,7 @@ def test_group_remove_user_that_is_not_part_of_group(
     """
     caplog.set_level(logging.INFO)
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    pass_.auth.add_group(name="developers", users=[])
+    pass_.auth.add_group(name="developers", user_ids=[])
 
     result = cli_runner.invoke(
         app, ["group", "remove-users", developer.email, "developers"]

@@ -125,7 +125,7 @@ def test_find_keys_happy_path(
     Then: the user is returned
     """
     auth.add_user(developer.name, developer.key, developer.email)
-    auth.add_group(name="developers", users=["developer@example.org"])
+    auth.add_group(name="developers", user_ids=["developer@example.org"])
 
     result = auth.find_keys(identifier)
 

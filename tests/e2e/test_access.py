@@ -34,7 +34,7 @@ def test_access_happy_path(
     Then: A tree is shown with only the elements it has access to
     """
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    pass_.auth.add_group(name="developers", users=[developer.email])
+    pass_.auth.add_group(name="developers", user_ids=[developer.email])
     pass_.change_access(add_identifiers=["developers"], pass_dir_path="web")
 
     result = cli_runner.invoke(app, ["access", identifier])
