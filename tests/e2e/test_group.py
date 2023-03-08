@@ -224,7 +224,7 @@ def test_group_authorize_can_ignore_parent(
 )
 def test_group_add_users(
     cli_runner: CliRunner,
-    auth: "AuthStore",
+    pass_: "PassStore",
     arguments: List[str],
     developer: User,
     admin: User,
@@ -234,15 +234,14 @@ def test_group_add_users(
     When: adding users to a group
     Then: users are added
     """
-    auth.add_user(name=admin.name, email=admin.email, key=admin.key)
-    auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    auth.add_group("test_group")
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group("test_group")
 
     result = cli_runner.invoke(app, arguments)
 
     assert result.exit_code == 0
-    auth.reload()
-    saved_group, saved_users = auth.get_group("test_group")
+    pass_.auth.reload()
+    saved_group, saved_users = pass_.auth.get_group("test_group")
     assert saved_group.users is not None
     if "developer@example.org" in arguments:
         assert developer in saved_users
@@ -270,13 +269,57 @@ def test_group_with_associated_passwords_add_users(
         assert not pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
 
     result = cli_runner.invoke(
-        app, ["group", "add-users", developer.email, "developers"], env={}
+        app, ["group", "add-users", developer.email, "developers"]
     )
 
     assert result.exit_code == 0
     for environment in ("production", "staging"):
         assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
         assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
+
+
+def test_group_with_associated_passwords_in_gpg_id_file_add_users(
+    cli_runner: CliRunner,
+    pass_: "PassStore",
+    pass_dev: "PassStore",
+    developer: User,
+    admin: User,
+) -> None:
+    """
+    Given: A configured password store with a gpg_id file with the keys of
+        developer and admin and a group `all` only with `admin`.
+    When: adding users to a group
+    Then: the new users are able to read the group passwords
+    """
+    # Create the .gpg-id file to have both keys and an empty auth store
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group(name="all", user_ids=[admin.email, developer.email])
+    pass_.change_access(add_identifiers=["all"], pass_dir_path=".")
+    pass_.auth.groups = []
+    pass_.auth.access = {}
+    pass_.auth.save()
+    pass_.auth.reload()
+    # As the `all` group doesn't exist, both users are in the .gpg-id file
+    # When we automatically load the information from the .gpg-id files it adds the
+    # users keys individually
+    assert admin.key in pass_.auth.access[".gpg-id"]
+    assert developer.key in pass_.auth.access[".gpg-id"]
+    #
+    # Simulate that we create the group
+    pass_.auth.add_group(name="all", user_ids=[admin.email])
+    pass_.change_access(add_identifiers=["all"], pass_dir_path=".")
+    # When we create the group, the reference to admin.name is replaced by the group
+    # it belongs to, all. But the developer.name it's still there as it's not part
+    # of the group but the .gpg-id grants it access
+    assert pass_.auth.access[".gpg-id"] == [developer.key, "all"]
+
+    result = cli_runner.invoke(app, ["group", "add-users", developer.email, "all"])
+
+    assert result.exit_code == 0
+    pass_.auth.reload()
+    # Now that developer is part of `all` there should not be any reference to that
+    # user in the access information.
+    assert pass_.auth.access[".gpg-id"] == ["all"]
 
 
 def test_group_remove_user_from_group(

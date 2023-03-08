@@ -27,6 +27,14 @@ class Group(BaseModel):
     name: Name
     users: List[EmailStr] = Field(default_factory=list)
 
+    def match(self, other: Union[str, "Group", "User"]) -> bool:
+        """Check if the group or it's users matches the identifier."""
+        if isinstance(other, str):
+            return other == self.name or other in self.users
+        if isinstance(other, User):
+            return other.email in self.users
+        return other == self
+
     def add_users(self, users: List["User"]) -> bool:
         """Add a list of users from the group.
 
@@ -68,10 +76,10 @@ class User(BaseModel):
     email: EmailStr
     key: GPGKey
 
-    def match(self, identifier: str) -> bool:
+    def match(self, other: Union[str, "Group", "User"]) -> bool:
         """Check if the user matches the identifier."""
-        if identifier in (self.name, self.key, self.email):
-            return True
+        if isinstance(other, str):
+            return other in (self.name, self.key, self.email)
         return False
 
 
@@ -303,12 +311,25 @@ class AuthStore(GoodConf):
         group, _ = self.get_group(group_name)
 
         log.debug("Add users")
-        new_users = [self.get_user(id_) for id_ in add_identifiers]
-        added_users = group.add_users(users=new_users)
+        users_to_add = [self.get_user(id_) for id_ in add_identifiers]
+        added_users = group.add_users(users=users_to_add)
 
         log.debug("Remove users")
         users_to_remove = [self.get_user(id_) for id_ in remove_identifiers]
         removed_users = group.remove_users(users=users_to_remove)
+
+        log.debug("Remove duplicate information in the access storage")
+        for access_entry in self.access.values():
+            # If the group we want to change is part of an access entry
+            if group.name in access_entry:
+                # And if any of the rest of the ids match a user that we have
+                # added or removed
+                for id_ in access_entry:
+                    for user in users_to_add + users_to_remove:
+                        if user.match(id_):
+                            # Then we can remove that entry from the access
+                            # storage as it's already tracked by the group
+                            access_entry.remove(id_)
 
         self.save()
 
@@ -361,7 +382,9 @@ class AuthStore(GoodConf):
         for identifier in add_identifiers:
             new_access = self.get_identifier(identifier)
 
-            if new_access.name in access:
+            if any(
+                self.get_identifier(element).match(new_access) for element in access
+            ):
                 log.info(
                     f"{new_access.name} is already authorized to access "
                     f"{gpg_id}, skipping"
