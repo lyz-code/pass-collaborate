@@ -323,6 +323,10 @@ class PassStore(BaseModel):
                 names, emails or gpg keys.
             remove_identifiers: Unique identifiers of users to remove. It can
                 be the user names, emails or gpg keys.
+
+        Raises:
+            EncryptionError: When there was an error reencrypting the files when changing 
+                the access
         """
         add_identifiers = add_identifiers or []
         remove_identifiers = remove_identifiers or []
@@ -480,7 +484,8 @@ class PassStore(BaseModel):
                 the .gpg-id file, the next time someone reencrypts the file using `pass`
                 directly, the change will be overwritten. We could handle this case, but
                 not for the MVP.
-
+            EncryptionError: When there was an error reencrypting the files when changing 
+                the access
         """
         if self.path(pass_dir_path).is_file():
             raise ValueError(

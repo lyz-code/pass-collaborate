@@ -43,9 +43,18 @@ def add_users(
     group_name: str = typer.Argument(...),
 ) -> None:
     """Add a list of users to an existent group."""
-    ctx.obj["pass"].change_group_users(
-        group_name=group_name, add_identifiers=identifiers
-    )
+    try:
+        ctx.obj["pass"].change_group_users(
+            group_name=group_name, add_identifiers=identifiers
+        )
+    except EncryptionError as error:
+        err_console = Console(stderr=True)
+        err_console.print(str(error))
+        err_console.print(
+            'Please reset the state of your password directory, '
+            'fix the origin of the error and try again'
+        )
+        raise typer.Exit(code=2) from error
 
 
 @app.command()
@@ -61,9 +70,18 @@ def remove_users(  # noqa: B008
     group_name: str = typer.Argument(...),
 ) -> None:
     """Remove a list of users from an existent group."""
-    ctx.obj["pass"].change_group_users(
-        group_name=group_name, remove_identifiers=identifiers
-    )
+    try:
+        ctx.obj["pass"].change_group_users(
+            group_name=group_name, remove_identifiers=identifiers
+        )
+    except EncryptionError as error:
+        err_console = Console(stderr=True)
+        err_console.print(str(error))
+        err_console.print(
+            'Please reset the state of your password directory, '
+            'fix the origin of the error and try again'
+        )
+        raise typer.Exit(code=2) from error
 
 
 @app.command(name="list")
