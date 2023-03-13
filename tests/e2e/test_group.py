@@ -46,13 +46,13 @@ def test_group_add(
     )
 
 
-def test_group_list(cli_runner: CliRunner, auth: "AuthStore") -> None:
+def test_group_list(cli_runner: CliRunner, pass_: "PassStore") -> None:
     """
     Given: A configured environment and a group added
     When: calling group list command
     Then: The groups are listed
     """
-    auth.add_group("test_group")
+    pass_.auth.add_group("test_group")
 
     result = cli_runner.invoke(app, ["group", "list"])
 
@@ -284,16 +284,20 @@ def test_group_with_associated_passwords_in_gpg_id_file_add_users(
     pass_dev: "PassStore",
     developer: User,
     admin: User,
+    attacker: User,
 ) -> None:
     """
     Given: A configured password store with a gpg_id file with the keys of
-        developer and admin and a group `all` only with `admin`.
+        developer, attacker and admin and a group `all` only with `admin`.
     When: adding users to a group
     Then: the new users are able to read the group passwords
     """
     # Create the .gpg-id file to have both keys and an empty auth store
     pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
-    pass_.auth.add_group(name="all", user_ids=[admin.email, developer.email])
+    pass_.auth.add_user(name=attacker.name, email=attacker.email, key=attacker.key)
+    pass_.auth.add_group(
+        name="all", user_ids=[admin.email, developer.email, attacker.email]
+    )
     pass_.change_access(add_identifiers=["all"], pass_dir_path=".")
     pass_.auth.groups = []
     pass_.auth.access = {}
@@ -304,6 +308,7 @@ def test_group_with_associated_passwords_in_gpg_id_file_add_users(
     # users keys individually
     assert admin.key in pass_.auth.access[".gpg-id"]
     assert developer.key in pass_.auth.access[".gpg-id"]
+    assert attacker.key in pass_.auth.access[".gpg-id"]
     #
     # Simulate that we create the group
     pass_.auth.add_group(name="all", user_ids=[admin.email])
@@ -311,9 +316,13 @@ def test_group_with_associated_passwords_in_gpg_id_file_add_users(
     # When we create the group, the reference to admin.name is replaced by the group
     # it belongs to, all. But the developer.name it's still there as it's not part
     # of the group but the .gpg-id grants it access
-    assert pass_.auth.access[".gpg-id"] == [developer.key, "all"]
+    assert "all" in pass_.auth.access[".gpg-id"]
+    assert developer.key in pass_.auth.access[".gpg-id"]
+    assert attacker.key in pass_.auth.access[".gpg-id"]
 
-    result = cli_runner.invoke(app, ["group", "add-users", developer.email, "all"])
+    result = cli_runner.invoke(
+        app, ["group", "add-users", developer.email, attacker.email, "all"]
+    )
 
     assert result.exit_code == 0
     pass_.auth.reload()

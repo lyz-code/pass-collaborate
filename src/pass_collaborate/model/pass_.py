@@ -352,6 +352,9 @@ class PassStore(BaseModel):
     def access(self, identifier: "Identifier", deep: bool = False) -> List[str]:
         """Get a list of passwords the entity identified by identifier has access to.
 
+        It only analyzes the passwords that are in the subtree where the
+        .auth.yaml file lives.
+
         Args:
             identifier: Unique identifier of a group or person. It can be the
                 group name, person name, email or gpg key.
@@ -367,7 +370,7 @@ class PassStore(BaseModel):
         """
         return [
             self._pass_path(path)
-            for path in self._pass_paths()
+            for path in self._pass_paths(str(self.auth_dir))
             if self.has_access(self._pass_path(path), identifier, deep)
         ]
 

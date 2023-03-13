@@ -28,7 +28,7 @@ class Group(BaseModel):
     users: List[EmailStr] = Field(default_factory=list)
 
     def match(self, other: Union[str, "Group", "User"]) -> bool:
-        """Check if the group or it's users matches the identifier."""
+        """Check if the group or it's users matches other object."""
         if isinstance(other, str):
             return other == self.name or other in self.users
         if isinstance(other, User):
@@ -182,11 +182,14 @@ class AuthStore(GoodConf):
     def _load_gpg_id_files(self) -> None:
         """Load the data of the gpg-id files that is not already in the access store."""
         for gpg_id in self.store_dir.rglob(".gpg-id"):
-            key = self.gpg_id_access_key(gpg_id)
+            access = self.gpg_id_access_key(gpg_id)
             try:
-                self.access[key]
+                existent_keys = self.access_keys(access)
+                for key in gpg_id.read_text().splitlines():
+                    if key not in existent_keys:
+                        self.access[access].append(key)
             except KeyError:
-                self.access[key] = gpg_id.read_text().splitlines()
+                self.access[access] = gpg_id.read_text().splitlines()
 
     def save(self) -> None:
         """Save the contents of the authentication store."""
@@ -324,12 +327,13 @@ class AuthStore(GoodConf):
             if group.name in access_entry:
                 # And if any of the rest of the ids match a user that we have
                 # added or removed
-                for id_ in access_entry:
+                for id_ in access_entry.copy():
                     for user in users_to_add + users_to_remove:
                         if user.match(id_):
                             # Then we can remove that entry from the access
                             # storage as it's already tracked by the group
                             access_entry.remove(id_)
+                            break
 
         self.save()
 
@@ -522,8 +526,29 @@ class AuthStore(GoodConf):
 
         Args:
             gpg_id: A real path to a .gpg_id file.
+
+        Raises:
+            ValueError: if the gpg_id path is not part of the store_dir
         """
         if isinstance(gpg_id, str):
             gpg_id = Path(gpg_id)
 
         return str(gpg_id.relative_to(self.store_dir))
+
+    def access_keys(self, access_id: str) -> List[GPGKey]:
+        """Return the GPG keys allowed to an access entry.
+
+        Args:
+            access_id: identifier of an access element
+        """
+        keys: List[GPGKey] = []
+
+        for access in self.access[access_id]:
+            authoree = self.get_identifier(access)
+            if isinstance(authoree, Group):
+                _, users = self.get_group(access)
+                keys.extend(user.key for user in users)
+            else:
+                keys.append(authoree.key)
+
+        return list(set(keys))

@@ -173,3 +173,19 @@ def test_user_can_have_accents_on_name() -> None:
     result = User(name=user.name, email=user.email, key=user.key)
 
     assert user == result
+
+
+def test_auth_loads_gpg_id_even_if_entry_exists(
+    auth: "AuthStore", admin: "User"
+) -> None:
+    """
+    Given: an auth store with a key in the access property
+    When: loading the auth store
+    Then: The missing keys are loaded
+    """
+    auth.access[".gpg-id"] = []
+    auth.save()
+
+    auth.reload()  # act
+
+    assert auth.access[".gpg-id"] == [admin.key]
