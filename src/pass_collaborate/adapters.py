@@ -106,6 +106,24 @@ class KeyStore:
             # E1101 Instance of 'Crypt' has no 'stderr' member (no-member). But it does
             raise EncryptionError(encrypted_data.stderr)  # noqa: E1101
 
+    def reencrypt(self, path: Path, keys: List["GPGKey"]) -> None:
+        """Reencrypt a file for a list of keys.
+
+        Args:
+            path: Path to the file to reencrypt.
+            keys: GPG keys used to encrypt the file.
+
+        Raise:
+           EncryptionError: if there is any problem when encrypting the file.
+        """
+        data = self.decrypt(path)
+        encrypted_data = self.gpg.encrypt(data, keys)
+        if encrypted_data.ok:
+            path.write_bytes(encrypted_data.data)
+        else:
+            # E1101 Instance of 'Crypt' has no 'stderr' member (no-member). But it does
+            raise EncryptionError(encrypted_data.stderr)  # noqa: E1101
+
     def list_recipients(self, path: Path) -> List["GPGKey"]:
         """List the keys that can decrypt a file.
 

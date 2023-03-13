@@ -77,6 +77,34 @@ def test_can_encrypt_a_file(key: KeyStore, work_dir: Path) -> None:
     assert pass_result == text
 
 
+def test_can_reencrypt_a_file(
+    key: KeyStore, work_dir: Path, admin: "User", developer: "User"
+) -> None:
+    """
+    Given: A keystore adapter and an encrypted file
+    When: reencrypting a file with other keys
+    Then: the keystore is able to decrypt it and `pass` command too
+    """
+    text = "this is a test"
+    file_to_encrypt = work_dir / ".password-store" / "new_file.gpg"
+    file_to_encrypt.write_text(text)
+    key.encrypt(file_to_encrypt, [admin.key])
+
+    key.reencrypt(file_to_encrypt, [admin.key, developer.key])  # act
+
+    assert key.decrypt(file_to_encrypt) == text
+    pass_command = sh.Command("pass")
+    pass_result = pass_command(
+        "show",
+        "new_file",
+        _env={
+            "PASSWORD_STORE_DIR": str(work_dir / ".password-store"),
+            "PASSWORD_STORE_GPG_OPTS": f"--homedir {str(work_dir/ 'gpg' / 'admin')}",
+        },
+    ).stdout.decode("utf-8")
+    assert pass_result == text
+
+
 def test_can_list_recipients_of_file(key: KeyStore, work_dir: Path) -> None:
     """
     Given: A keystore adapter

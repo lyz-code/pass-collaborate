@@ -201,7 +201,7 @@ class PassStore(BaseModel):
             # self.allowed_keys directly on the file as it will only report the
             # keys that can now access the file.
             allowed_keys = self.allowed_keys(path=self.auth.gpg_id_file(path))
-            self.key.encrypt(path, allowed_keys)
+            self.key.reencrypt(path, allowed_keys)
 
     def find_keys(self, identifier: "Identifier") -> List[GPGKey]:
         """Return the gpg keys associated to an identifier.
