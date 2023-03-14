@@ -355,11 +355,9 @@ class AuthStore(GoodConf):
         Args:
             gpg_id: path to a passwordstore .gpg-id file
             add_identifiers: Unique identifiers of groups or people to authorize.
-                It can be the group name, person name, email or gpg key. Can be
-                used in addition to `keys`.
+                It can be the group name, person name, email or gpg key.
             remove_identifiers: Unique identifiers of groups or people to revoke.
-                It can be the group name, person name, email or gpg key. Can be
-                used in addition to `keys`.
+                It can be the group name, person name, email or gpg key.
             ignore_parent: Ignore the access permissions defined in the parent .gpg-id.
                 It shouldn't be True by default because it will risk locking
                 yourself out.
@@ -367,7 +365,6 @@ class AuthStore(GoodConf):
         Returns:
             Whether a change was made.
         """
-        changed = False
         add_identifiers = add_identifiers or []
         remove_identifiers = remove_identifiers or []
 
@@ -382,64 +379,97 @@ class AuthStore(GoodConf):
             else:
                 access = []
 
+        original_access = access.copy()
+
         log.debug("Authorize new access")
         for identifier in add_identifiers:
-            new_access = self.get_identifier(identifier)
-
-            if any(
-                self.get_identifier(element).match(new_access) for element in access
-            ):
-                log.info(
-                    f"{new_access.name} is already authorized to access "
-                    f"{gpg_id}, skipping"
-                )
-                continue
-            if isinstance(new_access, User):
-                log.info(
-                    f"  Authorizing access to user {new_access.name}: "
-                    f"{new_access.email} ({new_access.key})"
-                )
-            else:
-                log.info(f"  Authorizing access to group {new_access.name}")
-                log.debug(
-                    "  Removing the gpg keys that are already tracked by the "
-                    "group we're adding"
-                )
-                _, users = self.get_group(identifier)
-                for element in access:
-                    if any(user.match(element) for user in users):
-                        log.debug(
-                            f"{element} is already included in {identifier} "
-                            "removing it from the access entry"
-                        )
-                        access.remove(element)
-
-            access.append(new_access.name)
-            changed = True
+            access = self._authorize_access(identifier, access, gpg_id)
 
         log.debug("Revoke existing access")
         for identifier in remove_identifiers:
-            revoke = self.get_identifier(identifier)
+            access = self._revoke_access(identifier, access)
 
-            if isinstance(revoke, User):
-                log.info(
-                    f"  Revoking access to user {revoke.name}: "
-                    f"{revoke.email} ({revoke.key})"
-                )
-            else:
-                log.info(f"  Revoking access to group {revoke.name}")
-
-            # We may pass here when we remove the access of a user to a group,
-            # therefore the access to the directory doesn't change as it's
-            # binded to the group
-            with suppress(ValueError):
-                access.remove(revoke.name)
-                changed = True
+        if access == original_access:
+            return False
 
         self.access[self.gpg_id_access_key(gpg_id)] = access
-
         self.save()
-        return changed
+
+        return True
+
+    def _authorize_access(
+        self, identifier: Identifier, access: List[str], gpg_id: GPGIDPath
+    ) -> List[str]:
+        """Authorize a new element into an access list.
+
+        Args:
+            identifier: Unique identifier of a group or person to authorize.
+                It can be the group name, person name, email or gpg key.
+            access: the value of an entry of self.access
+
+        Returns:
+            updated access with the new element
+        """
+        new_access = self.get_identifier(identifier)
+
+        if any(self.get_identifier(element).match(new_access) for element in access):
+            log.info(
+                f"{new_access.name} is already authorized to access "
+                f"{gpg_id}, skipping"
+            )
+            return access
+        if isinstance(new_access, User):
+            log.info(
+                f"  Authorizing access to user {new_access.name}: "
+                f"{new_access.email} ({new_access.key})"
+            )
+        else:
+            log.info(f"  Authorizing access to group {new_access.name}")
+            log.debug(
+                "  Removing the gpg keys that are already tracked by the "
+                "group we're adding"
+            )
+            _, users = self.get_group(identifier)
+            for element in access:
+                if any(user.match(element) for user in users):
+                    log.debug(
+                        f"{element} is already included in {identifier} "
+                        "removing it from the access entry"
+                    )
+                    access.remove(element)
+
+        access.append(new_access.name)
+
+        return access
+
+    def _revoke_access(self, identifier: Identifier, access: List[str]) -> List[str]:
+        """Revoke an element from an access list.
+
+        Args:
+            identifier: Unique identifier of a group or person to revoke.
+                It can be the group name, person name, email or gpg key.
+            access: the value of an entry of self.access
+
+        Returns:
+            updated access without the matching element
+        """
+        revoke = self.get_identifier(identifier)
+
+        if isinstance(revoke, User):
+            log.info(
+                f"  Revoking access to user {revoke.name}: "
+                f"{revoke.email} ({revoke.key})"
+            )
+        else:
+            log.info(f"  Revoking access to group {revoke.name}")
+
+        # We may pass here when we remove the access of a user to a group,
+        # therefore the access to the directory doesn't change as it's
+        # binded to the group
+        with suppress(ValueError):
+            access.remove(revoke.name)
+
+        return access
 
     def has_access(self, path: Path, identifier: "Identifier") -> bool:
         """Check in the stored access if the identdifier is allowed to the gpg_id file.

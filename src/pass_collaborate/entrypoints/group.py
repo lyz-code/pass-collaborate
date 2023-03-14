@@ -47,12 +47,12 @@ def add_users(
         ctx.obj["pass"].change_group_users(
             group_name=group_name, add_identifiers=identifiers
         )
-    except EncryptionError as error:
+    except exceptions.EncryptionError as error:
         err_console = Console(stderr=True)
         err_console.print(str(error))
         err_console.print(
-            'Please reset the state of your password directory, '
-            'fix the origin of the error and try again'
+            "Please reset the state of your password directory, "
+            "fix the origin of the error and try again"
         )
         raise typer.Exit(code=2) from error
 
@@ -74,12 +74,12 @@ def remove_users(  # noqa: B008
         ctx.obj["pass"].change_group_users(
             group_name=group_name, remove_identifiers=identifiers
         )
-    except EncryptionError as error:
+    except exceptions.EncryptionError as error:
         err_console = Console(stderr=True)
         err_console.print(str(error))
         err_console.print(
-            'Please reset the state of your password directory, '
-            'fix the origin of the error and try again'
+            "Please reset the state of your password directory, "
+            "fix the origin of the error and try again"
         )
         raise typer.Exit(code=2) from error
 
@@ -120,6 +120,34 @@ def authorize(  # noqa: B008
                 pass_dir_path=path,
                 add_identifiers=[group_name],
                 ignore_parent=ignore_parent,
+            )
+        except ValueError as error:
+            err_console.print(str(error))
+            raise typer.Exit(code=2) from error
+        except exceptions.TooManyError as error:
+            err_console.print(str(error))
+            raise typer.Exit(code=401) from error
+        except exceptions.NotFoundError as error:
+            err_console.print(str(error))
+            raise typer.Exit(code=401) from error
+
+
+@app.command()
+def revoke(  # noqa: B008
+    ctx: typer.Context,
+    group_name: str,
+    pass_paths: List[str] = typer.Argument(
+        ..., help="pass directories to give access to."
+    ),
+) -> None:
+    """Revoke a group to a directory of the password store."""
+    pass_ = ctx.obj["pass"]
+    err_console = Console(stderr=True)
+    for path in pass_paths:
+        try:
+            pass_.change_access(
+                pass_dir_path=path,
+                remove_identifiers=[group_name],
             )
         except ValueError as error:
             err_console.print(str(error))

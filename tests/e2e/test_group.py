@@ -386,3 +386,53 @@ def test_group_remove_user_that_is_not_part_of_group(
         logging.INFO,
         f"User {developer.name} is not part of the developers group",
     ) in caplog.record_tuples
+
+
+def test_group_revoke_happy_path(
+    cli_runner: CliRunner,
+    pass_: "PassStore",
+    pass_dev: "PassStore",
+    admin: "User",
+    developer: "User",
+) -> None:
+    """
+    Given: A configured environment and a group that has access to a password
+    When: Revoking access to that directory
+    Then: The group no longer has access to the password.
+    """
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group(name="developers", user_ids=[developer.email])
+    pass_.change_access("web", ["developers"])
+    assert "developers" in pass_.auth.access["web/.gpg-id"]
+    assert admin.key in pass_.auth.access["web/.gpg-id"]
+    for environment in ("production", "staging"):
+        assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
+        assert pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
+
+    result = cli_runner.invoke(app, ["group", "revoke", "developers", "web"])
+
+    assert result.exit_code == 0
+    pass_.auth.reload()
+    assert pass_.auth.access["web/.gpg-id"] == [admin.key]
+    for environment in ("production", "staging"):
+        assert pass_.can_decrypt(pass_.path(f"web/{environment}"))
+        assert not pass_dev.can_decrypt(pass_.path(f"web/{environment}"))
+
+
+def test_group_revoke_is_idempotent(
+    cli_runner: CliRunner, pass_: "PassStore", admin: "User", developer: "User"
+) -> None:
+    """
+    Given: A configured environment
+    When: Trying to revoke a directory that the group has no access to
+    Then: It doesn't do anything as it's not authorized.
+    """
+    pass_.auth.add_user(name=developer.name, email=developer.email, key=developer.key)
+    pass_.auth.add_group(name="developers", user_ids=[developer.email])
+    assert pass_.auth.access == {".gpg-id": [admin.key]}
+
+    result = cli_runner.invoke(app, ["group", "revoke", "developers", "web"])
+
+    assert result.exit_code == 0
+    pass_.auth.reload()
+    assert pass_.auth.access == {".gpg-id": [admin.key]}
