@@ -91,6 +91,12 @@ If it's the first time you `authorize` a password path, `pass_collaborate` will 
 pass group authorize --ignore-parent developers web
 ```
 
+To remove access to a group to the directories of your password store you can use:
+
+```bash
+pass group revoke group_name pass/path/1 pass/path/2
+```
+
 ## Check access
 
 As your password store begins to grow or you start refining the permissions of the different groups and users it may be easy to get lost on who has access to what. You can check what passwords does a group or user have access with:

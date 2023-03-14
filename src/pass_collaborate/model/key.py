@@ -1,6 +1,9 @@
 """Define the model of the key objects."""
 
-from typing import Annotated
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 from pydantic import Field  # noqa: E0611
 
