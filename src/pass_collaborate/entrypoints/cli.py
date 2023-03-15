@@ -1,44 +1,108 @@
 """Command line interface definition."""
 
-import click
+import logging
+from pathlib import Path
+from typing import Optional
 
-from .. import version
-from . import load_logger
+import typer
+from pydantic import ValidationError
+from rich.console import Console
+
+from .. import views
+from ..exceptions import NotFoundError
+from ..model.pass_ import PassStore
+from ..version import version_info
+from . import group, load_logger, user
+
+log = logging.getLogger(__name__)
+
+app = typer.Typer()
+app.add_typer(group.app, name="group")
+app.add_typer(user.app, name="user")
 
 
-from click.core import Context
-from . import load_config
+def version_callback(value: bool) -> None:
+    """Print the version of the program."""
+    if value:
+        print(version_info())
+        raise typer.Exit()
 
 
-
-
-@click.group()
-@click.version_option(version="", message=version.version_info())
-@click.option("-v", "--verbose", is_flag=True)
-
-@click.option(
-    "-c",
-    "--config_path",
-    default="~/.local/share/pass_collaborate/config.yaml",
-    help="configuration file path",
-    envvar="PASS_COLLABORATE_CONFIG_PATH",
-)
-@click.pass_context
-def cli(ctx: Context, config_path: str, verbose: bool) -> None:
-    """Command line interface main click entrypoint."""
+# W0613: version is not used, but it is
+# M511: - mutable default arg of type Call, it's how it's defined
+# B008: Do not perform function calls in argument defaults. It's how it's defined
+# R0913: Too many arguments for the function, but we need them to define the command
+#   line interface
+@app.callback()
+def main(  # noqa: R0913
+    ctx: typer.Context,
+    version: Optional[bool] = typer.Option(  # noqa: W0613, M511, B008
+        None, "--version", callback=version_callback, is_eager=True
+    ),
+    pass_dir: Path = typer.Option(  # noqa: M511, B008
+        "~/.password-store", envvar="PASSWORD_STORE_DIR"
+    ),
+    key_dir: Path = typer.Option("~/.gnupg", envvar="GNUPGHOME"),  # noqa: M511, B008
+    auth_dir: Path = typer.Option(  # noqa: M511, B008
+        Path(""),
+        envvar="PASSWORD_AUTH_DIR",
+        help=(
+            "Relative path from the root of the password store to the directory "
+            "where the .auth.yaml lives"
+        ),
+    ),
+    verbose: bool = False,
+) -> None:
+    """A pass extension that helps collectives manage the access to their passwords."""
     ctx.ensure_object(dict)
-
-    ctx.obj["config"] = load_config(config_path)
+    err_console = Console(stderr=True)
     load_logger(verbose)
+    try:
+        ctx.obj["pass"] = PassStore(
+            store_dir=pass_dir.expanduser(),
+            key_dir=key_dir.expanduser(),
+            auth_dir=auth_dir,
+        )
+    except NotFoundError as error:
+        err_console.print(str(error))
+        raise typer.Exit(code=404) from error
+    except ValidationError as error:
+        err_console.print(str(error))
+        raise typer.Exit(code=2) from error
 
-@cli.command(hidden=True)
-def null() -> None:
-    """Do nothing.
 
-    Used for the tests until we have a better solution.
-    """
+@app.command()
+def access(
+    ctx: typer.Context,
+    identifier: str = typer.Argument(
+        ...,
+        help=(
+            "Unique identifier of the user or group who's access to check. "
+            "It can be a user name, email, gpg key or group name."
+        ),
+    ),
+    deep: bool = typer.Option(
+        False,
+        help=(
+            "Enable to analyze the keys allowed for each file instead of trusting the "
+            ".gpg-id files."
+        ),
+    ),
+) -> None:
+    """Check what passwords does the user or group have access to."""
+    err_console = Console(stderr=True)
+    pass_ = ctx.obj["pass"]
+    if deep:
+        log.info("If you have many files using --deep may be slow")
 
-if __name__ == "__main__":  # pragma: no cover
-    # E1120: As the arguments are passed through the function decorators instead of
-    # during the function call, pylint get's confused.
-    cli(ctx={})  # noqa: E1120
+    try:
+        paths = pass_.access(identifier, deep)
+    except NotFoundError as error:
+        err_console.print(str(error))
+        raise typer.Exit(code=404) from error
+
+    views.print_access(label=identifier, paths=paths)
+
+
+if __name__ == "__main__":
+    app()

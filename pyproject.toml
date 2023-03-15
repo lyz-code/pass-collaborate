@@ -24,12 +24,15 @@ authors = [
     {name = "Lyz", email = "lyz-code-security-advisories@riseup.net"},
 ]
 license = {text = "GPL-3.0-only"}
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 dependencies = [
-
     "click>=8.1.3",
-
     "goodconf[yaml]>=2.0.1",
+    "typer>=0.7.0",
+    "pydantic[email]>=1.10.2",
+    "rich>=12.6.0",
+    "python-gnupg>=0.5.0",
+    "ruyaml>=0.91.0",
 ]
 name = "pass-collaborate"
 description = "A pass extension that helps collectives manage the access to their passwords"
@@ -56,7 +59,7 @@ homepage = "https://github.com/lyz-code/pass-collaborate"
 documentation = "https://lyz-code.github.io/pass-collaborate"
 
 [project.scripts]
-pass_collaborate = "pass_collaborate.entrypoints.cli:cli"
+pass_collaborate = "pass_collaborate.entrypoints.cli:app"
 
 [project.optional-dependencies]
 
@@ -68,6 +71,11 @@ allow_prereleases = true
 
 [tool.pdm.build]
 editable-backend = "path"
+setup-script = "build.py"
+includes = [
+  'src/pass_collaborate',
+  'assets',
+]
 
 [tool.pdm.overrides]
 # To be removed once https://github.com/flakeheaven/flakeheaven/issues/132 is solved
@@ -105,6 +113,7 @@ test = [
     "pytest-xdist>=3.0.2",
     "pytest-freezegun>=0.4.2",
     "pydantic-factories>=1.6.1",
+    "sh>=1.14.3",
 ]
 doc = [
     "mkdocs>=1.3.1",
@@ -178,7 +187,7 @@ exclude = '''
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-vv --tb=short -n auto"
+addopts = "-n auto"
 norecursedirs = [
     ".tox",
     ".git",
@@ -303,6 +312,17 @@ pylint = [
   "-W0613", # Unused argument in function, but in tests there are fixtures that even
             # though they are not used in the function directly, they are used to
             # configure the test.
+  "-R0913", # Too many arguments, but is the way to use fixtures.
+]
+
+
+[tool.flakeheaven.exceptions."src/pass_collaborate/entrypoints/"]
+flake8-bugbear = [
+  "-B008", # Do not perform function calls in argument defaults. It's how typer
+           #   arguments are defined.
+]
+flake8-mutable = [
+  "-M511", # Mutable default arg. It's how typer args are defined
 ]
 
 [tool.flakeheaven.exceptions."tests/factories.py"]
@@ -361,5 +381,7 @@ disallow_untyped_decorators = false
 module = [
     "goodconf",
     "pytest",
+    "gnupg.*",
+    "sh.*",
 ]
 ignore_missing_imports = true

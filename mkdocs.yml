@@ -6,10 +6,6 @@ nav:
   - pass-collaborate: index.md
   - Reference: reference.md
   - Contributing: contributing.md
-  - Architecture Decision Records:
-      - adr/adr.md
-      - '001: High level problem analysis': |
-          adr/001-high_level_problem_analysis.md
 
 plugins:
   - search
@@ -69,6 +65,7 @@ theme:
   # logo: 'images/logo.bmp'
   features:
     - navigation.instant
+    - navigation.footer
     - navigation.top
     - content.code.annotate
 
