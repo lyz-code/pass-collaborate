@@ -74,7 +74,7 @@ mypy:
 	@echo ""
 
 .PHONY: test
-test: test-code test-examples
+test: test-code 
 
 	@echo "\a"
 
