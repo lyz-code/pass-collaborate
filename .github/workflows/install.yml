@@ -22,3 +22,5 @@ jobs:
         run: pip install pass-collaborate
       - name: Test the program works
         run: pass-collaborate --version
+      - name: Test the extensions are installed
+        run: [[ -f ~/.password_store/.extensions/user.bash && -f ~/.password_store/.extensions/group.bash && -f ~/.password_store/.extensions/access.bash ]]

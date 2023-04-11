@@ -63,15 +63,12 @@ pass_collaborate = "pass_collaborate.entrypoints.cli:app"
 
 [project.optional-dependencies]
 
-[tool.pdm]
+[tool.pdm.build]
 version = {from = "src/pass_collaborate/version.py"}
 package-dir = "src"
 source-includes = ["tests/"]
 allow_prereleases = true
-
-[tool.pdm.build]
 editable-backend = "path"
-setup-script = "build.py"
 includes = [
   'src/pass_collaborate',
   'assets',
@@ -155,8 +152,8 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["pdm-pep517"]
-build-backend = "pdm.pep517.api"
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
 # --------- Black -------------
 
