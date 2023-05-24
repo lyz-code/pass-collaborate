@@ -2,8 +2,8 @@
 
 import logging
 import os
-import sys
 import shutil
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -118,7 +118,7 @@ def init() -> None:
     os.makedirs(lib, exist_ok=True)
 
     log.debug("Copying the plugin files")
-    package_directory = sys.modules['pass_collaborate'].__path__[0]
+    package_directory = sys.modules["pass_collaborate"].__path__[0]
     for filename in ["user.bash", "group.bash", "access.bash"]:
         shutil.copyfile(f"{package_directory}/assets/{filename}", lib / filename)
         # nosec: We need the files to be executable
