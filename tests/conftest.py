@@ -87,7 +87,7 @@ def auth_(work_dir: Path) -> AuthStore:
 @pytest.fixture(name="key")
 def key_(work_dir: Path) -> KeyStore:
     """Create the password store for an admin."""
-    return KeyStore(key_dir=(work_dir / "gpg" / "admin"))
+    return KeyStore(key_dir=work_dir / "gpg" / "admin")
 
 
 @pytest.fixture(name="cli_runner")

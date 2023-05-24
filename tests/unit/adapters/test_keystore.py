@@ -73,7 +73,7 @@ def test_can_encrypt_a_file(key: KeyStore, work_dir: Path) -> None:
             "PASSWORD_STORE_DIR": str(work_dir / ".password-store"),
             "PASSWORD_STORE_GPG_OPTS": f"--homedir {str(work_dir/ 'gpg' / 'admin')}",
         },
-    ).stdout.decode("utf-8")
+    )
     assert pass_result == text
 
 
@@ -101,7 +101,7 @@ def test_can_reencrypt_a_file(
             "PASSWORD_STORE_DIR": str(work_dir / ".password-store"),
             "PASSWORD_STORE_GPG_OPTS": f"--homedir {str(work_dir/ 'gpg' / 'admin')}",
         },
-    ).stdout.decode("utf-8")
+    )
     assert pass_result == text
 
 
