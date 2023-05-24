@@ -14,6 +14,7 @@ details.
 
 ```bash
 pip install pass-collaborate
+pass_collaborate init
 ```
 
 ## Contributing

@@ -71,7 +71,6 @@ allow_prereleases = true
 
 [tool.pdm.build]
 editable-backend = "path"
-setup-script = "build.py"
 includes = [
   'src/pass_collaborate',
   'assets',

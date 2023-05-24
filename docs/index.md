@@ -13,6 +13,7 @@ It allows you to choose which users or groups have access to the different parts
 
 ```bash
 pip install pass-collaborate
+pass_collaborate init
 ```
 
 # Usage

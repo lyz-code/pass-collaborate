@@ -1,6 +1,8 @@
 """Command line interface definition."""
 
 import logging
+import os
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -102,6 +104,33 @@ def access(
         raise typer.Exit(code=404) from error
 
     views.print_access(label=identifier, paths=paths)
+
+
+@app.command()
+def init() -> None:
+    """Create the needed files in the user's device."""
+    if "PASSWORD_STORE_EXTENSIONS_DIR" in os.environ:
+        lib = Path(os.environ["PASSWORD_STORE_EXTENSIONS_DIR"])
+    else:
+        lib = Path.home() / ".password-store" / ".extensions"
+    log.debug(f"Creating the {lib} directory")
+    os.makedirs(lib, exist_ok=True)
+
+    log.debug("Copying the plugin files")
+    for filename in ["user.bash", "group.bash", "access.bash"]:
+        shutil.copyfile(f"assets/{filename}", lib / filename)
+        os.chmod(lib / filename, 0o755)
+
+    # Enable the extensions
+    for filename in [".bashrc", ".zshrc"]:
+        config = Path.home() / filename
+        if (
+            config.exists()
+            and "export PASSWORD_STORE_ENABLE_EXTENSIONS=true" not in config.read_text()
+        ):
+            log.debug(f"Enabling the pass extensions in {config}")
+            with config.open("a") as file_descriptor:
+                file_descriptor.write("export PASSWORD_STORE_ENABLE_EXTENSIONS=true")
 
 
 if __name__ == "__main__":
