@@ -119,7 +119,8 @@ def init() -> None:
     log.debug("Copying the plugin files")
     for filename in ["user.bash", "group.bash", "access.bash"]:
         shutil.copyfile(f"assets/{filename}", lib / filename)
-        os.chmod(lib / filename, 0o755)
+        # nosec: We need the files to be executable
+        os.chmod(lib / filename, 0o755)  # nosec
 
     # Enable the extensions
     for filename in [".bashrc", ".zshrc"]:
