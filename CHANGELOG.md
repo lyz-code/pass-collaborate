@@ -1,3 +1,9 @@
+## 0.1.1 (2023-05-24)
+
+### Fix
+
+- configure pass extension with pass_collaborate init
+
 ## 0.1.0 (2023-03-15)
 
 ### Feat
