@@ -73,7 +73,6 @@ allow_prereleases = true
 editable-backend = "path"
 includes = [
   'src/pass_collaborate',
-  'assets',
 ]
 
 [tool.pdm.overrides]
