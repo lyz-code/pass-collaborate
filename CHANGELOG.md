@@ -1,3 +1,9 @@
+## 0.1.3 (2023-05-24)
+
+### Fix
+
+- correct location of assets (again)
+
 ## 0.1.2 (2023-05-24)
 
 ### Fix
