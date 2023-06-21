@@ -44,8 +44,8 @@ def test_access_happy_path(
         f"""\
         Password access for {identifier}
         └── web
-            ├── staging
-            └── production
+            ├── production
+            └── staging
         """
     )
     assert result.stdout == expected_output
@@ -69,11 +69,11 @@ def test_access_with_no_groups(
         Password access for {admin.email}
         ├── bastion
         ├── database
-        │   ├── staging
-        │   └── production
+        │   ├── production
+        │   └── staging
         └── web
-            ├── staging
-            └── production
+            ├── production
+            └── staging
         """
     )
     assert result.stdout == expected_output
