@@ -134,6 +134,7 @@ def init() -> None:
             log.debug(f"Enabling the pass extensions in {config}")
             with config.open("a") as file_descriptor:
                 file_descriptor.write("export PASSWORD_STORE_ENABLE_EXTENSIONS=true")
+            log.info(f"Please reload your terminal configuration with source {config}")
 
 
 if __name__ == "__main__":
