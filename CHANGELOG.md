@@ -1,3 +1,10 @@
+## 0.1.4 (2023-06-21)
+
+### Fix
+
+- order results of access report
+- add terminal reload message when adding env vars
+
 ## 0.1.3 (2023-05-24)
 
 ### Fix
