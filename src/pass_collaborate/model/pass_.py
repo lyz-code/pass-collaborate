@@ -3,7 +3,7 @@
 import logging
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pydantic import BaseModel, root_validator  # noqa: E0611
 
@@ -280,9 +280,7 @@ class PassStore(BaseModel):
 
         return list(set(keys))
 
-    def _pass_paths(
-        self, pass_dir_path: Optional[str] = None
-    ) -> Generator[Path, None, None]:
+    def _pass_paths(self, pass_dir_path: Optional[str] = None) -> List[Path]:
         """Return all the password files of a pass directory.
 
         Args:
@@ -290,7 +288,7 @@ class PassStore(BaseModel):
                 Not a real Path. If None it will take the root of the password
                 store
         """
-        return self.path(pass_dir_path, is_dir=True).rglob("*.gpg")
+        return sorted(self.path(pass_dir_path, is_dir=True).rglob("*.gpg"))
 
     def _pass_path(self, path: Path) -> str:
         """Return the pass representation of a real path.
