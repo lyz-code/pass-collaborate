@@ -15,8 +15,6 @@ plugins:
           rendering:
             show_root_heading: true
             heading_level: 1
-      watch:
-        - src
   - autolinks
   - git-revision-date-localized:
       type: timeago
@@ -77,5 +75,7 @@ extra_css:
   - stylesheets/extra.css
   - stylesheets/links.css
 
+watch:
+  - src
 repo_name: lyz-code/pass-collaborate
 repo_url: https://github.com/lyz-code/pass-collaborate
