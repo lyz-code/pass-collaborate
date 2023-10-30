@@ -179,7 +179,7 @@ def test_auth_loads_gpg_id_even_if_entry_exists(
     auth: "AuthStore", admin: "User"
 ) -> None:
     """
-    Given- : an auth store with a key in the access property
+    Given: an auth store with a key in the access property
     Then: The missing keys are loaded
     """
     auth.access[".gpg-id"] = []

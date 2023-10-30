@@ -136,3 +136,18 @@ def test_pass_has_access_group_is_not_equal_to_their_keys(
     result = pass_.has_access("", "developers")
 
     assert not result
+
+
+def test_pass_update_gpg_id_file_ends_in_newline(pass_: "PassStore") -> None:
+    r"""
+    Given: A pass store
+    When: Using the update_gpg_id_file method
+    Then: The created file ends in a \n
+
+    Otherwise the last key in the file is not used by pass when encrypting new files.
+    """
+    gpg_id_file = pass_.store_dir / ".gpg-id"
+
+    pass_.update_gpg_id_file(gpg_id_file)  # act
+
+    assert gpg_id_file.read_text()[-1] == "\n"

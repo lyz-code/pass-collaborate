@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List
 
 import pytest
@@ -62,7 +63,7 @@ def test_pass_returns_error_when_no_keys_are_found(
     """
     user = UserFactory.build()
     gpg_id = pass_.store_dir / ".gpg-id"
-    gpg_id.write_text(user.key)
+    gpg_id.write_text(f"{user.key}\n")
 
     result = cli_runner.invoke(app, ["access", user.name])
 
@@ -103,7 +104,7 @@ def test_supports_auth_file_not_in_root_of_pass(
     new_auth_store = pass_.auth.store_dir / "web"
     new_config = new_auth_store / ".auth.yaml"
     new_gpg_id = new_auth_store / ".gpg-id"
-    new_gpg_id.write_text(developer.key)
+    new_gpg_id.write_text(f"{developer.key}\n")
     assert not new_config.exists()
 
     result = cli_runner.invoke(app, args, env=env)
@@ -114,3 +115,24 @@ def test_supports_auth_file_not_in_root_of_pass(
     pass_.auth.load(str(new_config))
     assert pass_.auth.users == [developer]
     assert pass_.auth.groups[0].name == "test_group"
+
+
+def test_reencrypt_all_password_store(
+    cli_runner: CliRunner, pass_: "PassStore", admin: "User"
+) -> None:
+    r"""
+    Given: A pass store with a .gpg-id file that does not end in \n
+    When: Using the reencrypt method
+    Then: all of the files are rencrypted, to check this we make sure that:
+        - The .gpg-id file has the \n fixed.
+        - The modified time of a gpg file is recent.
+    """
+    gpg_id_file = pass_.store_dir / ".gpg-id"
+    gpg_id_file.write_text(admin.key)
+    assert gpg_id_file.read_text()[-1] != "\n"
+    assert datetime.now().timestamp() - pass_.path("bastion").stat().st_mtime > 60
+
+    cli_runner.invoke(app, ["reencrypt"])  # act
+
+    assert gpg_id_file.read_text()[-1] == "\n"
+    assert datetime.now().timestamp() - pass_.path("bastion").stat().st_mtime < 60
