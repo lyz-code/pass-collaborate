@@ -1,3 +1,14 @@
+## 0.2.0 (2023-10-30)
+
+### Feat
+
+- add the reencrypt command line command
+- support Python 3.11
+
+### Fix
+
+- add a \n at the end of the .gpg-id files
+
 ## 0.1.4 (2023-06-21)
 
 ### Fix
