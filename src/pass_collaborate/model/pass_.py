@@ -3,7 +3,7 @@
 import logging
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, root_validator  # noqa: E0611
 
@@ -170,6 +170,15 @@ class PassStore(BaseModel):
 
         return list(set(keys))
 
+    def reencrypt(
+        self,
+    ) -> None:
+        """Reencrypt the whole password store."""
+        for gpg_id in self.auth.store_dir.rglob(".gpg-id"):
+            self.update_gpg_id_file(gpg_id)
+
+        self.reencrypt_directory(str(self.auth_dir))
+
     def reencrypt_directory(
         self,
         pass_dir_path: str,
@@ -215,7 +224,7 @@ class PassStore(BaseModel):
 
     def update_gpg_id_file(
         self,
-        gpg_id: str,
+        gpg_id: Union[str, Path],
     ) -> None:
         """Update the GPG keys of a .gpg-id file to match the auth store access.
 
@@ -223,10 +232,13 @@ class PassStore(BaseModel):
             gpg_id: path to a password store .gpg-id file
         """
         keys = []
-        gpg_id_file = Path(gpg_id)
+        if not isinstance(gpg_id, Path):
+            gpg_id_file = Path(gpg_id)
+        else:
+            gpg_id_file = gpg_id
         log.info(f"Updating the keys stored in {gpg_id}")
         keys.extend(self.allowed_keys(gpg_id_file))
-        gpg_id_file.write_text("\n".join(set(keys)), encoding="utf-8")
+        gpg_id_file.write_text("\n".join(set(keys)) + "\n", encoding="utf-8")
 
     def can_decrypt(self, path: Path) -> bool:
         """Test if the user can decrypt a file.

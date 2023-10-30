@@ -108,6 +108,15 @@ def access(
 
 
 @app.command()
+def reencrypt(
+    ctx: typer.Context,
+) -> None:
+    """Re-encrypt the whole password store."""
+    pass_ = ctx.obj["pass"]
+    pass_.reencrypt()
+
+
+@app.command()
 def init() -> None:
     """Create the needed files in the user's device."""
     if "PASSWORD_STORE_EXTENSIONS_DIR" in os.environ:
