@@ -21,4 +21,4 @@ jobs:
       - name: Install the program
         run: pip install pass-collaborate
       - name: Test the program works
-        run: pass-collaborate --version
+        run: pass_collaborate --version
