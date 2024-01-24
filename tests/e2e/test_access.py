@@ -40,14 +40,12 @@ def test_access_happy_path(
     result = cli_runner.invoke(app, ["access", identifier])
 
     assert result.exit_code == 0
-    expected_output = dedent(
-        f"""\
+    expected_output = dedent(f"""\
         Password access for {identifier}
         └── web
             ├── production
             └── staging
-        """
-    )
+        """)
     assert result.stdout == expected_output
 
 
@@ -64,8 +62,7 @@ def test_access_with_no_groups(
     result = cli_runner.invoke(app, ["access", admin.email])
 
     assert result.exit_code == 0
-    expected_output = dedent(
-        f"""\
+    expected_output = dedent(f"""\
         Password access for {admin.email}
         ├── bastion
         ├── database
@@ -74,8 +71,7 @@ def test_access_with_no_groups(
         └── web
             ├── production
             └── staging
-        """
-    )
+        """)
     assert result.stdout == expected_output
 
 
@@ -120,10 +116,8 @@ def test_access_deep_analyzes_the_files(
     result = cli_runner.invoke(app, ["access", "--deep", attacker.email])
 
     assert result.exit_code == 0
-    expected_output = dedent(
-        f"""\
+    expected_output = dedent(f"""\
         Password access for {attacker.email}
         └── bastion
-        """
-    )
+        """)
     assert result.stdout == expected_output

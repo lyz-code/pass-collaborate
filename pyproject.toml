@@ -67,6 +67,8 @@ pass_collaborate = "pass_collaborate.entrypoints.cli:app"
 version = {from = "src/pass_collaborate/version.py"}
 package-dir = "src"
 source-includes = ["tests/"]
+
+[tool.pdm.resolution]
 allow_prereleases = true
 
 [tool.pdm.build]
