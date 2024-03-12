@@ -11,9 +11,11 @@ __version__ = "0.2.0"
 
 def version_info() -> str:
     """Display the version of the program, python and the platform."""
-    return dedent(f"""\
+    return dedent(
+        f"""\
         ------------------------------------------------------------------
              pass_collaborate: {__version__}
              Python: {sys.version.split(" ", maxsplit=1)[0]}
              Platform: {platform.platform()}
-        ------------------------------------------------------------------""")
+        ------------------------------------------------------------------"""
+    )
