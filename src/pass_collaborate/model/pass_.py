@@ -84,6 +84,7 @@ class PassStore(BaseModel):
                         break
                 else:
                     missing_keys.append(key)
+                log.error(f"Could not find key {key} in your keystore")
 
         if len(missing_keys) > 0:
             raise NotFoundError(

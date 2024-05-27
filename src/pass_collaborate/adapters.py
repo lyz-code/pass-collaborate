@@ -157,7 +157,8 @@ class KeyStore:
             match = re.match(r"(?P<name>.*) <(?P<email>.*)>", key["uids"][0])
             if match is None:
                 raise ValueError(
-                    "Could not extract the name or email from the gpg key information"
+                    "Could not extract the name or email from the gpg key "
+                    f"{key['keyid']} information"
                 )
             keys.append(
                 Key(
