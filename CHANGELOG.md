@@ -1,3 +1,10 @@
+## 0.2.2 (2024-10-14)
+
+### Fix
+
+- small lint errors
+- update dependencies
+
 ## 0.2.1 (2024-10-14)
 
 ## 0.2.0 (2023-10-30)
