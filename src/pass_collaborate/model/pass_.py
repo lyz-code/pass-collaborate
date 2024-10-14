@@ -460,8 +460,8 @@ class PassStore(BaseModel):
 
         return True
 
-    # R0913: too many arguments 6/5, but self shouldn't count :P
-    def change_access(  # noqa: R0913
+    # R0913, R0917: too many arguments 6/5, but self shouldn't count :P
+    def change_access(  # noqa: R0913, R0917
         self,
         pass_dir_path: str,
         add_identifiers: Optional[List["Identifier"]] = None,

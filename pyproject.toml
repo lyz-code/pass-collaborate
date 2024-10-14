@@ -315,6 +315,7 @@ pylint = [
             # though they are not used in the function directly, they are used to
             # configure the test.
   "-R0913", # Too many arguments, but is the way to use fixtures.
+  "-R0917", # Too many positional arguments, but is the way to define typer clis.
 ]
 
 
@@ -325,6 +326,10 @@ flake8-bugbear = [
 ]
 flake8-mutable = [
   "-M511", # Mutable default arg. It's how typer args are defined
+]
+pylint = [
+  "-R0913", # Too many arguments, but is the way to define typer clis.
+  "-R0917", # Too many positional arguments, but is the way to define typer clis.
 ]
 
 [tool.flakeheaven.exceptions."tests/factories.py"]
